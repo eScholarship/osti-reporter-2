@@ -1,0 +1,6 @@
+.DS_Store
+.idea/
+Working Files/
+__pycache__/
+creds.py
+test_output/
