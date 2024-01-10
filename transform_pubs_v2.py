@@ -78,8 +78,8 @@ def add_osti_data_v2(new_osti_pubs, testing_mode):
             # Convert email to an array
             for author in authors_json:
 
-                # Check if the author is an org, if so, add it to the list.
-                # TK This could be more robust
+                # Check if the author is an org.
+                # If so, append it to the org list.
                 if is_organization_author(author):
                     author['org'] = True
                     osti_pub['organizations'].append(format_organization_author(author))
@@ -88,7 +88,7 @@ def add_osti_data_v2(new_osti_pubs, testing_mode):
                     author['email'] = [author['email']]
 
             # Remove the organization authors.
-            authors_json = [author for author in authors_json if not author['org']]
+            authors_json = [author for author in authors_json if 'org' not in author.keys()]
             osti_pub['persons'] += authors_json
 
         # Grants (Organizations)
@@ -164,7 +164,7 @@ def get_product_type(pub_type):
 # Check known organizational authors
 def is_organization_author(author):
     if ('collaboration' in author['last_name'].lower()
-            or 'collaboration' in author['first_name'].lower()):
+            or ('first_name' in author.keys() and 'collaboration' in author['first_name'].lower())):
         return True
     else:
         return False
@@ -174,6 +174,6 @@ def is_organization_author(author):
 # Returns a reasonable format for authoring organization strings.
 def format_organization_author(author):
     org_name = author['last_name']
-    if author['first_name'] is not None and author['first_name'] != ".":
+    if 'first_name' in author.keys() and author['first_name'] != ".":
         org_name = author['first_name'] + " " + org_name
-    return {"name":org_name, "type": "AUTHOR"}
+    return {"name": org_name, "type": "AUTHOR"}
