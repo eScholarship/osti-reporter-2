@@ -19,23 +19,25 @@ def add_osti_data_v1(new_osti_pubs, test_mode):
 
         # ---------------------
         # 1. Create a dict, init with hardcoded items
-        osti_pub = {}
+        osti_pub = {
 
-        # Misc.
-        osti_pub['language'] = "English"
-        osti_pub['country_publication_code'] = "US"
+            # Misc.
+            'language': "English",
+            'country_publication_code': "US",
 
-        # LBL details
-        osti_pub['site_input_code'] = "LBNLSCH"
-        osti_pub['doe_contract_nos'] = "AC02-05CH11231"
-        osti_pub['originating_research_org'] = \
-            "Lawrence Berkeley National Laboratory (LBNL), Berkeley, CA (United States)"
+            # LBL details
+            'site_input_code': "LBNLSCH",
+            'doe_contract_nos': "AC02-05CH11231",
+            'originating_research_org':
+                "Lawrence Berkeley National Laboratory (LBNL), Berkeley, CA (United States)",
 
-        # Release info
-        osti_pub['released_by'] = "Geoff Hamm"
-        osti_pub['released_date'] = (datetime.datetime.now()).strftime('%m/%d/%Y')
-        osti_pub['released_by_email'] = "ghamm@lbl.gov"
-        osti_pub['released_by_phone'] = "510-495-2633"
+            # Release info
+            'released_by': "Geoff Hamm",
+            'released_date': (datetime.datetime.now()).strftime('%m/%d/%Y'),
+            'released_by_email': "ghamm@lbl.gov",
+            'released_by_phone': "510-495-2633"
+
+        }
 
         # ---------------------
         # 2. Publication-specific
@@ -59,8 +61,9 @@ def add_osti_data_v1(new_osti_pubs, test_mode):
             continue
 
         # File URL
+        # Note: We are using the eschol/content/id/id.pdf URLs here.
         if pub['File URL'] is None:
-            print("Publication doesn't have a file URL, skipping.")
+            print("Publication doesn't have an eSchol File URL, skipping.")
             continue
         else:
             osti_pub['site_url'] = pub['File URL']
@@ -86,7 +89,8 @@ def add_osti_data_v1(new_osti_pubs, test_mode):
         osti_pub_xml = dict_to_osti_xml(osti_pub)
 
         # XML to string formatting
-        if test_mode: ET.indent(osti_pub_xml)
+        if test_mode:
+            ET.indent(osti_pub_xml)
         osti_pub_xml = ET.tostring(osti_pub_xml, encoding='ascii', xml_declaration=True)
 
         # Add the item to the list
@@ -147,7 +151,7 @@ def get_v1_authors(authors):
             continue
         if 'first_name' in author.keys():
             formatted_author += (", " + author['first_name'])
-        if 'middle_name_name' in author.keys():
+        if 'middle_name' in author.keys():
             formatted_author += (" " + author['middle_name'])
         formatted_authors.append(formatted_author)
 
@@ -166,7 +170,7 @@ def get_product_type_fields(pub):
         case 'journal article':
             pt['product_type'] = 'JA'
 
-            # Journal, Volume, issue
+            # Journal, Volume, issue (if available)
             if pub['journal'] is not None:
                 pt['journal_name'] = pub['journal']
             if pub['volume'] is not None:
@@ -175,17 +179,17 @@ def get_product_type_fields(pub):
                 pt['journal_issue'] = pub['issue']
 
             # Filetype and OA
-            if pub['File Extension'] == 'pdf' or is_oa_url(pub['File URL']):
-                pt['journal_type'] = 'AM'
-                pt['medium_code'] = 'ED'
-            else:
-                pt['journal_type'] = 'AC'
-                pt['medium_code'] = 'X'
+            pt['journal_type'] = 'AM'
+            pt['medium_code'] = 'ED'
+
+            # These medium types are for open access URLs, which we no longer use
+            # else:
+            #    pt['journal_type'] = 'AC'
+            #    pt['medium_code'] = 'X'
 
         case 'monograph' | 'chapter':
             pt['product_type'] = 'B'
-            if pub['File Extension'] == 'pdf' or is_oa_url(pub['File URL']):
-                pt['medium_code'] = 'ED'
+            pt['medium_code'] = 'ED'
             if pub['Type'].lower() == 'chapter' and pub['parent-title'] is not None:
                 pt['related_doc_info'] = "Book Title: " + pub['parent-title']
 
@@ -197,23 +201,9 @@ def get_product_type_fields(pub):
 
         case 'report':
             pt['product_type'] = 'TR'
-            if pub['File Extension'] == 'pdf' or is_oa_url(pub['File URL']):
-                pt['medium_code'] = 'ED'
+            pt['medium_code'] = 'ED'
 
         case _:
             pt['product_type'] = 'UNKNOWN'
 
     return pt
-
-
-def is_oa_url(file_url):
-    oa_urls = [
-        "arxiv.org",
-        "crd.lbl.gov",
-        "foundry.lbl.gov",
-        "sdm.lbl.gov",
-        "www.ncbi.nlm.nih.gov/"]
-    if any(oa_url in file_url for oa_url in oa_urls):
-        return True
-    else:
-        return False

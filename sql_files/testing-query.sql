@@ -1,10 +1,10 @@
-SELECT TOP 400
-	p.id,
+SELECT
+	DISTINCT p.id,
 	p.title,
 	p.[Type],
---	p.[publication-status],
+	p.[publication-status],
 	p.doi,
-	p.journal,
+	p.[Canonical Journal Title] as [journal],
 	p.volume,
 	p.issue,
 	p.[name-of-conference],
@@ -15,10 +15,12 @@ SELECT TOP 400
  	max(pr.[Data Source Proprietary ID]) as 'eSchol ID',
  	concat('ark:/13030/', max(pr.[Data Source Proprietary ID])) as 'ark',
 	pr.[public-url] as 'eSchol URL',
-	prf.[File URL],
 	prf.[Filename],
 	prf.[File Extension],
 	prf.[Size] as 'File Size',
+	concat('https://pub-jschol2-stg.escholarship.org/content/',
+		max(pr.[Data Source Proprietary ID]),
+		'/', max(pr.[Data Source Proprietary ID]), '.pdf') as [File URL],
 
 	-- Find LBL report numbers
 	case when (
@@ -109,17 +111,22 @@ FROM
 		
 -- And not already sent to OSTI.
 WHERE
-	p.doi NOT IN (
-		SELECT TOP 500 oe.doi -- TK TK "top ##" for testing
-		FROM UCOPReports.osti_eschol oe)
+	p.doi IN (
+        '10.1371/journal.pcbi.1011111',
+        '10.1186/s12864-023-09658-x',
+        '10.1186/s40168-023-01666-z',
+        '10.1017/cts.2023.619',
+        '10.1093/nar/gkac1095',
+        '10.1038/s41467-023-36221-9'
+    )
 
 GROUP BY
 	p.id,
 	p.title,
 	p.[Type],
---	p.[publication-status],
+	p.[publication-status],
 	p.doi,
-	p.journal,
+	p.[Canonical Journal Title],
 	p.volume,
 	p.issue,
 	p.[name-of-conference],

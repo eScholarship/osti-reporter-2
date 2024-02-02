@@ -1,20 +1,17 @@
 # OSTI eLink documentation https://review.osti.gov/elink2api/
-
-# This script requires a "creds.py" in its directory.
-# See "creds_template.py" for the required format.
-import creds
-import transform_pubs_v1 # TK can remove this when E-link v.2 goes live.
-import transform_pubs_v2
-
 # External libraries
 import argparse
-import pyodbc
 import datetime
 from pprint import pprint
 import requests
 
-# TK can delete this probably
-# import xml.etree.ElementTree as ET
+# This script requires a "creds.py" in its directory.
+# See "creds_template.py" for the required format.
+import creds
+import eschol_db_functions
+import elements_db_functions
+import transform_pubs_v1  # TK can remove this when E-link v.2 goes live.
+import transform_pubs_v2
 
 # -----------------------------
 # Global vars
@@ -65,11 +62,87 @@ args = parser.parse_args()
 
 # ========================================
 def main():
+    # Returns an ssh server if the flag is set.
+    ssh_server = validate_args_and_assign_creds()
+
+    # Get the data from the eschol_osti db
+    osti_eschol_db = eschol_db_functions.get_osti_db(mysql_creds)
+
+    # Get the publications which need to be sent
+    new_osti_pubs = elements_db_functions.get_new_osti_pubs(sql_creds, args.elink_version)
+
+    if new_osti_pubs == []:
+        print("No new OSTI publications were found. Exiting.")
+        exit(0)
+
+    # Add OSTI-specific metadata
+    if args.elink_version == 1:
+        new_osti_pubs = transform_pubs_v1.add_osti_data_v1(new_osti_pubs, args.test)
+    elif args.elink_version == 2:
+        new_osti_pubs = transform_pubs_v2.add_osti_data_v2(new_osti_pubs, args.test)
+
+    # Call OSTI API or output to files
+    if args.test:
+        output_test_files(new_osti_pubs, args.elink_version)
+    else:
+        call_osti_api(new_osti_pubs, args.elink_version)
+
+    # Close SSH tunnel if needed
+    if ssh_server:
+        ssh_server.stop()
+
+    print("Program complete. Exiting.")
+
+
+# =======================================
+# Outputs test files
+def output_test_files(new_osti_pubs, elink_version):
+    if elink_version == 1:
+        for index, osti_pub_xml_string in enumerate(new_osti_pubs):
+            filename = "v1-test-" + str(index)
+            with open("test_output/v1/" + filename + ".xml", "wb") as out_file:
+                out_file.write(osti_pub_xml_string)
+
+    elif elink_version == 2:
+        for index, osti_pub_json_string in enumerate(new_osti_pubs):
+            filename = "v2-test-" + str(index)
+            with open("test_output/v2/" + filename + ".json", "w") as out_file:
+                out_file.write(osti_pub_json_string)
+
+
+# =======================================
+# Loop the publications, send the XML or JSON
+
+def call_osti_api(new_osti_pubs, elink_version):
+    if elink_version == 1:
+        pass  # TK
+
+    elif elink_version == 2:
+        for i in range(40, 45):
+            req_url = osti_creds['base_url'] + "/records/submit"
+            headers = {'Authorization': 'Bearer ' + osti_creds['token']}
+            pub_json = new_osti_pubs[i]
+            response = requests.post(req_url, json=pub_json, headers=headers)
+
+            if response.status_code >= 300:
+                print(response)
+                pprint(response.json())
+                pprint(pub_json)
+
+
+# =======================================
+# Vars and creds setup
+def validate_args_and_assign_creds():
     global sql_creds, api_creds, osti_creds, mysql_creds
 
     # Validate args
-    if (args.connection == 'qa' or args.connection == 'production') \
-            and (args.elink_version == 1 or args.elink_version == 2):
+    if (
+            args.connection == 'qa'
+            or args.connection == 'production'
+    ) and (
+            args.elink_version == 1
+            or args.elink_version == 2
+    ):
         pass
     else:
         print("Invalid arguments provided. See here:")
@@ -106,132 +179,30 @@ def main():
     # Open SSH tunnel if needed
     if args.tunnel_needed:
         print("Opening SSH tunnel.")
-
-        # SSH-specific packages
         from sshtunnel import SSHTunnelForwarder
-        # import paramiko
-        # import os
 
-        # CDL is now using RSA keys, we have to read the file to SSH in.
-        # os.chdir(os.path.expanduser("~"))
-        # rsa_key = paramiko.RSAKey.from_private_key_file(ssh_creds['key_location'])
+        try:
+            server = SSHTunnelForwarder(
+                ssh_creds['host'],
+                ssh_username=ssh_creds['username'],
+                # ssh_pkey=(os.path.expanduser("~") + "/.ssh/id_rsa"),
+                # allow_agent automatically locates the appropriate ssh key
+                allow_agent=True,
+                remote_bind_address=ssh_creds['remote'],
+                local_bind_address=ssh_creds['local'])
 
-        # Connect using RSA key
-        server = SSHTunnelForwarder(
-            ssh_creds['host'],
-            ssh_username=ssh_creds['username'],
-            #ssh_pkey=rsa_key,
-            ssh_password=ssh_creds['password'],
-            remote_bind_address=ssh_creds['remote'],
-            local_bind_address=ssh_creds['local'])
+            server.start()
+            return server
 
-        server.start()
+        except Exception as e:
+            print(e)
+            exit(1)
 
-    # ----------------------------
-    # Get the publications which need to be sent
-    new_osti_pubs = get_new_osti_pubs(sql_creds, args.elink_version)
-
-    if new_osti_pubs == []:
-        print("No new OSTI publications were found. Exiting.")
-        exit(0)
-
-    # Add OSTI-specific metadata
-    if args.elink_version == 1:
-        new_osti_pubs = transform_pubs_v1.add_osti_data_v1(new_osti_pubs, args.test)
-    elif args.elink_version == 2:
-        new_osti_pubs = transform_pubs_v2.add_osti_data_v2(new_osti_pubs, args.test)
-
-    # Call OSTI API or output to files
-    if args.test:
-        output_test_files(new_osti_pubs, args.elink_version)
-    else:
-        call_osti_api(new_osti_pubs, args.elink_version)
-
-    # ----------------------------
-    # Close SSH tunnel if needed
-    if args.tunnel_needed:
-        server.stop()
-
-    print("Program complete. Exiting.")
+    # If tunnel is not required, return false.
+    return False
 
 
-# ========================================
-# Query the Elements DB, find pubs which need to be sent.
-def get_new_osti_pubs(sql_creds, elink_version):
-
-    # Load SQL file
-    try:
-        sql_file = open("get_new_osti_pubs_with_json.sql")
-        sql_query = sql_file.read()
-    except:
-        raise Exception("ERROR WHILE HANDLING SQL FILE. The file was unable to be located, \
-                or a problem occurred while reading its contents.")
-
-    # Connect to db
-    try:
-        conn = pyodbc.connect(
-            driver=sql_creds['driver'],
-            server=(sql_creds['server'] + ',' + sql_creds['port']),
-            database=sql_creds['database'],
-            uid=sql_creds['user'],
-            pwd=sql_creds['password'],
-            trustservercertificate='yes')
-
-    except:
-        raise Exception("ERROR CONNECTING TO DATABASE. Check credits and/or SSH tunneling.")
-
-    # Create cursor, execute query
-    print("Connected to Elements reporting DB. Sending Query.")
-    conn.autocommit = True  # Required when queries use TRANSACTION
-    cursor = conn.cursor()
-    cursor.execute(sql_query)
-
-    # pyodbc doesn't return dicts automatically, we have to make them ourselves
-    columns = [column[0] for column in cursor.description]
-    rows = [dict(zip(columns, row)) for row in cursor.fetchall()]
-
-    return rows
-
-
-# -----------------------------
-# Outputs test files
-def output_test_files(new_osti_pubs, elink_version):
-
-    if elink_version == 1:
-        for index, osti_pub_xml_string in enumerate(new_osti_pubs):
-            filename = "v1-test-" + str(index)
-            with open("test_output/v1/" + filename + ".xml", "wb") as out_file:
-                out_file.write(osti_pub_xml_string)
-
-    elif elink_version == 2:
-        for index, osti_pub_json_string in enumerate(new_osti_pubs):
-            filename = "v2-test-" + str(index)
-            with open("test_output/v2/" + filename + ".json", "w") as out_file:
-                out_file.write(osti_pub_json_string)
-
-
-# -----------------------------
-# Loop the publications, send the XML or JSON
-
-def call_osti_api(new_osti_pubs, elink_version):
-
-    if elink_version == 1:
-        pass  # TK
-
-    elif elink_version == 2:
-        for i in range(22, 28):
-            req_url = osti_creds['base_url'] + "/records/submit"
-            headers = {'Authorization': 'Bearer ' + osti_creds['token']}
-            pub_json = new_osti_pubs[i]
-            response = requests.post(req_url, json=pub_json, headers=headers)
-
-            if response.status_code >= 300:
-                print(response)
-                pprint(response.json())
-                pprint(pub_json)
-
-
-# -----------------------------
+# =======================================
 # Stub for main
 if __name__ == "__main__":
     main()
