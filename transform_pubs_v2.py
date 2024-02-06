@@ -1,5 +1,5 @@
 import json
-import datetime
+import release_info
 from pprint import pprint
 
 
@@ -20,29 +20,7 @@ def add_osti_data_v2(new_osti_pubs, testing_mode):
             continue
 
         # Create the pub dict, init with hardcoded items
-        osti_pub = {
-            'site_ownership_code': 'LBNLSCH',
-            'access_limitations': ['UNL'],
-            'added_by': 12345678,  # Note: this is overwritten during submission (via auth token user)
-            'released_to_osti_date': (datetime.datetime.now()).strftime('%m/%d/%Y'),
-            'country_publication_code': 'US',
-            'languages': ['English'],
-            'organizations': [
-                dict(type='SPONSOR', name='US Department of Energy'),
-                dict(type='RESEARCHING',
-                     name='Lawrence Berkeley National Laboratory (LBNL), Berkeley, CA (United States)')
-            ],
-            'identifiers': [
-                dict(type='CN_DOE', value='AC02-05CH11231'),
-            ],
-            'persons': [
-                dict(type='RELEASE',
-                     first_name='Geoff',
-                     last_name='Hamm',
-                     email=['ghamm@lbl.gov'],
-                     phone='510-495-2633')
-            ]
-        }
+        osti_pub = release_info.v2
 
         # ---------------------
         # Publication-specific metadata

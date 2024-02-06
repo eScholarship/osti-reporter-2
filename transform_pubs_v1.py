@@ -1,7 +1,7 @@
 import json
-import datetime
 import xml.etree.ElementTree as ET
 from pprint import pprint
+import release_info
 
 
 # ========================================
@@ -19,25 +19,7 @@ def add_osti_data_v1(new_osti_pubs, test_mode):
 
         # ---------------------
         # 1. Create a dict, init with hardcoded items
-        osti_pub = {
-
-            # Misc.
-            'language': "English",
-            'country_publication_code': "US",
-
-            # LBL details
-            'site_input_code': "LBNLSCH",
-            'doe_contract_nos': "AC02-05CH11231",
-            'originating_research_org':
-                "Lawrence Berkeley National Laboratory (LBNL), Berkeley, CA (United States)",
-
-            # Release info
-            'released_by': "Geoff Hamm",
-            'released_date': (datetime.datetime.now()).strftime('%m/%d/%Y'),
-            'released_by_email': "ghamm@lbl.gov",
-            'released_by_phone': "510-495-2633"
-
-        }
+        osti_pub = release_info.v1
 
         # ---------------------
         # 2. Publication-specific
