@@ -2,6 +2,7 @@
 # External libraries
 import argparse
 import datetime
+import json
 from pprint import pprint
 import requests
 
@@ -62,16 +63,20 @@ args = parser.parse_args()
 
 # ========================================
 def main():
-    # Returns an ssh server if the flag is set.
+
+    # Returns an ssh server if needed.
     ssh_server = validate_args_and_assign_creds()
 
     # Get the data from the eschol_osti db
-    osti_eschol_db = eschol_db_functions.get_osti_db(mysql_creds)
+    osti_eschol_db_pubs = eschol_db_functions.get_osti_db(mysql_creds)
 
     # Get the publications which need to be sent
-    new_osti_pubs = elements_db_functions.get_new_osti_pubs(sql_creds, args.elink_version)
+    new_osti_pubs = elements_db_functions.get_new_osti_pubs(sql_creds, osti_eschol_db_pubs, args)
 
-    if new_osti_pubs == []:
+    if args.test:
+        output_spotcheck(new_osti_pubs)
+
+    if not new_osti_pubs:
         print("No new OSTI publications were found. Exiting.")
         exit(0)
 
@@ -97,6 +102,7 @@ def main():
 # =======================================
 # Outputs test files
 def output_test_files(new_osti_pubs, elink_version):
+
     if elink_version == 1:
         for index, osti_pub_xml_string in enumerate(new_osti_pubs):
             filename = "v1-test-" + str(index)
@@ -108,6 +114,33 @@ def output_test_files(new_osti_pubs, elink_version):
             filename = "v2-test-" + str(index)
             with open("test_output/v2/" + filename + ".json", "w") as out_file:
                 out_file.write(osti_pub_json_string)
+
+
+def output_spotcheck(new_osti_pubs):
+
+        pprint(new_osti_pubs)
+
+        spot_check_output = [
+            {
+                'doi': item['doi'],
+                'eSchol ID': item['eSchol ID'],
+                'Pub Record ID': item['Pub Record ID'],
+                'URL': item['eSchol URL'],
+                'Pub date (RD1)': item['Reporting Date 1'],
+                'type':item['Type'],
+                'grants': item['grants']
+             }
+            for item in new_osti_pubs]
+
+        # Open a file in write mode.
+        with open('test_output/publication-spotcheck.csv', 'w') as f:
+            # Write all the dictionary keys in a file with commas separated.
+            f.write(','.join(spot_check_output[0].keys()))
+            f.write('\n')  # Add a new line
+            for row in spot_check_output:
+                # Write the values in a row.
+                f.write(','.join(str(x) for x in row.values()))
+                f.write('\n')  # Add a new line
 
 
 # =======================================
@@ -145,9 +178,9 @@ def validate_args_and_assign_creds():
     ):
         pass
     else:
-        print("Invalid arguments provided. See here:")
+        print("Invalid arguments. See here:")
         print(parser.print_help())
-        exit(0)
+        exit(1)
 
     # Loads creds based on the above flags
     # --------- QA
