@@ -47,6 +47,7 @@ SELECT DISTINCT
 		or p.number like '%LBNL%'
 		) then p.number
 		else null
+
 	end as [LBL Report Number],
 
 	-- Authors JSON

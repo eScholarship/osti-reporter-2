@@ -2,6 +2,7 @@ import pyodbc
 import test_output
 
 
+
 # --------------------------
 # Query the Elements DB, find pubs which need to be sent.
 def get_new_osti_pubs(sql_creds, osti_eschol_db, args):
@@ -37,6 +38,7 @@ def get_new_osti_pubs(sql_creds, osti_eschol_db, args):
 
     print("Creating temp table with submitted OSTI data.")
     temp_table_query = create_submitted_temp_table(osti_eschol_db)
+
     if args.test:
         test_output.output_temp_table_query(temp_table_query)
 
@@ -108,3 +110,4 @@ def get_full_temp_table(cursor):
     columns = [column[0] for column in cursor.description]
     rows = [dict(zip(columns, row)) for row in cursor.fetchall()]
     return rows
+
