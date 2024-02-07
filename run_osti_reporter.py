@@ -1,8 +1,6 @@
 # OSTI eLink documentation https://review.osti.gov/elink2api/
 # External libraries
 import argparse
-import datetime
-import json
 from pprint import pprint
 import requests
 
@@ -13,6 +11,7 @@ import eschol_db_functions
 import elements_db_functions
 import transform_pubs_v1  # TK can remove this when E-link v.2 goes live.
 import transform_pubs_v2
+import test_output
 
 # -----------------------------
 # Global vars
@@ -64,7 +63,8 @@ args = parser.parse_args()
 # ========================================
 def main():
 
-    # Returns an ssh server if needed.
+
+    # Returns an ssh server if needed, otherwise None.
     ssh_server = validate_args_and_assign_creds()
 
     # Get the data from the eschol_osti db
@@ -73,12 +73,12 @@ def main():
     # Get the publications which need to be sent
     new_osti_pubs = elements_db_functions.get_new_osti_pubs(sql_creds, osti_eschol_db_pubs, args)
 
-    if args.test:
-        output_spotcheck(new_osti_pubs)
-
     if not new_osti_pubs:
         print("No new OSTI publications were found. Exiting.")
         exit(0)
+
+    if args.test:
+        test_output.output_elements_query_results(new_osti_pubs)
 
     # Add OSTI-specific metadata
     if args.elink_version == 1:
@@ -88,7 +88,7 @@ def main():
 
     # Call OSTI API or output to files
     if args.test:
-        output_test_files(new_osti_pubs, args.elink_version)
+        test_output.output_submissions(new_osti_pubs, args.elink_version)
     else:
         call_osti_api(new_osti_pubs, args.elink_version)
 
@@ -100,52 +100,7 @@ def main():
 
 
 # =======================================
-# Outputs test files
-def output_test_files(new_osti_pubs, elink_version):
-
-    if elink_version == 1:
-        for index, osti_pub_xml_string in enumerate(new_osti_pubs):
-            filename = "v1-test-" + str(index)
-            with open("test_output/v1/" + filename + ".xml", "wb") as out_file:
-                out_file.write(osti_pub_xml_string)
-
-    elif elink_version == 2:
-        for index, osti_pub_json_string in enumerate(new_osti_pubs):
-            filename = "v2-test-" + str(index)
-            with open("test_output/v2/" + filename + ".json", "w") as out_file:
-                out_file.write(osti_pub_json_string)
-
-
-def output_spotcheck(new_osti_pubs):
-
-        pprint(new_osti_pubs)
-
-        spot_check_output = [
-            {
-                'doi': item['doi'],
-                'eSchol ID': item['eSchol ID'],
-                'Pub Record ID': item['Pub Record ID'],
-                'URL': item['eSchol URL'],
-                'Pub date (RD1)': item['Reporting Date 1'],
-                'type':item['Type'],
-                'grants': item['grants']
-             }
-            for item in new_osti_pubs]
-
-        # Open a file in write mode.
-        with open('test_output/publication-spotcheck.csv', 'w') as f:
-            # Write all the dictionary keys in a file with commas separated.
-            f.write(','.join(spot_check_output[0].keys()))
-            f.write('\n')  # Add a new line
-            for row in spot_check_output:
-                # Write the values in a row.
-                f.write(','.join(str(x) for x in row.values()))
-                f.write('\n')  # Add a new line
-
-
-# =======================================
 # Loop the publications, send the XML or JSON
-
 def call_osti_api(new_osti_pubs, elink_version):
     if elink_version == 1:
         pass  # TK

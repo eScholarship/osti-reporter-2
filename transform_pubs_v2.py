@@ -1,11 +1,11 @@
+# Transform for OSTI E-Link Version 2
+
 import json
 import release_info
 from pprint import pprint
 
 
-# ========================================
-# Transform for OSTI E-Link Version 2
-
+# ---------------------
 # For each new publication, create the JSON that's sent as the HTTP req body.
 def add_osti_data_v2(new_osti_pubs, testing_mode):
     print("Converting SQL results into JSON for E-Link v2.")

@@ -1,11 +1,10 @@
-import json
-import xml.etree.ElementTree as ET
-from pprint import pprint
-import release_info
-
-
-# ========================================
 # Transform for OSTI E-Link Version 1
+import json
+import release_info
+from pprint import pprint
+import xml.etree.ElementTree as ET
+
+
 
 # -----------------
 # Create the XML bodies for each item in new_osti_v1_pubs
