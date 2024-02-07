@@ -53,6 +53,7 @@ SELECT DISTINCT
 	END AS [Journal Name],
 
 	-- Find LBL report numbers
+<<<<<<< HEAD
 	CASE WHEN (UPPER(p.number) LIKE '%LBL%' OR UPPER(p.number) LIKE '%LBNL%')
 		THEN p.number
 		ELSE NULL

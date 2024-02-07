@@ -24,6 +24,7 @@ submission_count = 0
 # ========================================
 def main():
 
+
     # Process and validate arguments. Will exit if invalid.
     args = program_setup.process_args()
 
