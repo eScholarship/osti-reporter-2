@@ -47,7 +47,10 @@ SELECT DISTINCT
 		or p.number like '%LBNL%'
 		) then p.number
 		else null
+<<<<<<< HEAD
 
+=======
+>>>>>>> 3bcd62a (Moved testing output to its own file; Elements SQL query revisions)
 	end as [LBL Report Number],
 
 	-- Authors JSON

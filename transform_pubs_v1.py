@@ -4,7 +4,10 @@ import release_info
 from pprint import pprint
 import xml.etree.ElementTree as ET
 
+<<<<<<< HEAD
 
+=======
+>>>>>>> 3bcd62a (Moved testing output to its own file; Elements SQL query revisions)
 
 # -----------------
 # Create the XML bodies for each item in new_osti_v1_pubs

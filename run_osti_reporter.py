@@ -63,7 +63,10 @@ args = parser.parse_args()
 # ========================================
 def main():
 
+<<<<<<< HEAD
 
+=======
+>>>>>>> 3bcd62a (Moved testing output to its own file; Elements SQL query revisions)
     # Returns an ssh server if needed, otherwise None.
     ssh_server = validate_args_and_assign_creds()
 
