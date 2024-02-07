@@ -6,27 +6,36 @@ DECLARE @fiscal_year_cutoff date =
 			CONVERT(VARCHAR, YEAR(GETDATE()) - 2) + '-10-01'
 	END;
 
-SELECT -- TOP 400 -- for testing
-	p.id,
+SELECT DISTINCT
+    p.id,
+ 	CONCAT('https://oapolicy.universityofcalifornia.edu/viewobject.html?cid=1&id=',
+ 		p.id) as [Elements URL],
 	p.title,
 	p.[Type],
 	p.[publication-status],
-	p.doi,
+	pr.doi,
 	p.[Canonical Journal Title] as [journal],
 	p.volume,
 	p.issue,
 	p.[name-of-conference],
 	p.[parent-title],
-	FORMAT(p.[Reporting Date 1], 'MM/dd/yyyy') as 'Reporting Date 1',
-	pr.[ID] as 'Pub Record ID',
+	FORMAT(p.[Reporting Date 1], 'MM/dd/yyyy') as [Reporting Date 1],
+	FORMAT(pr.[publication-date], 'MM/dd/yyyy') as [eschol Pub Date],
+	FORMAT(pr.[online-publication-date], 'MM/dd/yyyy') as [eschol Online Pub Date],
+	pr.[ID] as [Pub Record ID],
 	pr.[abstract],
- 	max(pr.[Data Source Proprietary ID]) as 'eSchol ID',
- 	concat('ark:/13030/', max(pr.[Data Source Proprietary ID])) as 'ark',
-	pr.[public-url] as 'eSchol URL',
+ 	max(pr.[Data Source Proprietary ID]) as [eSchol ID],
+ 	pr.[public-url] as [eSchol URL],
+ 	CONCAT('ark:/13030/', max(pr.[Data Source Proprietary ID])) as [ark],
 	prf.[Filename],
 	prf.[File Extension],
-	prf.[Size] as 'File Size',
-	concat('https://pub-jschol2-stg.escholarship.org/content/',
+	prf.[Size] as [File Size],
+
+	-- Build the file URL.
+	-- Note: These PDFs are created during deposit and are live after a few seconds after deposit.
+	-- DocX files are converted, and the eScholarship title page is created and added.
+	-- There CAN be errors during the creation process, but it's rare in practice.
+	CONCAT('https://escholarship.org/content/',
 		max(pr.[Data Source Proprietary ID]),
 		'/', max(pr.[Data Source Proprietary ID]), '.pdf') as [File URL],
 
@@ -38,7 +47,7 @@ SELECT -- TOP 400 -- for testing
 		or p.number like '%LBNL%'
 		) then p.number
 		else null
-	end as 'LBL Report Number',
+	end as [LBL Report Number],
 
 	-- Authors JSON
 	(SELECT
@@ -67,8 +76,8 @@ SELECT -- TOP 400 -- for testing
 		prp.[Publication Record ID] = pr.id
 		and prp.[Index] < 500
 	FOR JSON AUTO
-	) AS 'authors',
-	
+	) AS [authors],
+
 	-- Grants JSON
 	(SELECT
 		'SPONSOR' as "type",
@@ -82,9 +91,9 @@ SELECT -- TOP 400 -- for testing
 		AND
 			(g.[funder-name] like '%USDOE%'
 			or g.[title] like '%USDOE%'
-			or g.[Computed Title] like '%USDOE%') 
+			or g.[Computed Title] like '%USDOE%')
 	FOR JSON AUTO
-	) AS 'grants'
+	) AS [grants]
 
 FROM
 	Publication p
@@ -116,13 +125,13 @@ FROM
 		on pr.ID = prf.[Publication Record ID]
 		and prf.Filename IS NOT NULL
 		and prf.[File URL] IS NOT NULL
-		
+
 -- Not already sent to OSTI and within -1 fiscal year
 WHERE
-    -- This temp table is created in elements_db_functions.py,
+    -- The temp table #osti_eschol_db is created in elements_db_functions.py,
     -- using data from the mysql [osti_eschol_db]
-	p.doi NOT IN (SELECT os.[doi] FROM #osti_submitted os)
-	and pr.[Data Source Proprietary ID] NOT IN (SELECT os.[eschol_id] FROM #osti_submitted os)
+	p.doi NOT IN (SELECT [doi] FROM #osti_submitted)
+	and pr.[Data Source Proprietary ID] NOT IN (SELECT [eschol_id] FROM #osti_submitted)
 
 	-- No embargoed pubs
 	and (
@@ -133,7 +142,7 @@ WHERE
 	-- See DECLARE above for date calculation
 	and (
 	    p.[Reporting Date 1] >= @fiscal_year_cutoff
-	    -- or p.[publication-date] >= @fiscal_year_cutoff
+	    or pr.[publication-date] >= @fiscal_year_cutoff
 	    -- or p.[online-publication-date] >= @fiscal_year_cutoff
 	    )
 
@@ -142,22 +151,24 @@ GROUP BY
 	p.title,
 	p.[Type],
 	p.[publication-status],
-	p.doi,
+	pr.doi,
 	p.[Canonical Journal Title],
 	p.volume,
 	p.issue,
 	p.[name-of-conference],
 	p.[parent-title],
 	p.[Reporting Date 1],
+	pr.[publication-date],
+	pr.[online-publication-date],
  	p.[number],
 	g.[funder-name],
 	pr.[ID],
 	pr.[abstract],
 	pr.[public-url],
-	prf.[File URL],
 	prf.[Filename],
 	prf.[File Extension],
-	prf.[Size]
+	prf.[Size],
+	prf.[File URL]
 
 ORDER BY
 	p.id;
