@@ -53,7 +53,6 @@ SELECT DISTINCT
 	END AS [Journal Name],
 
 	-- Find LBL report numbers
-<<<<<<< HEAD
 	CASE WHEN (UPPER(p.number) LIKE '%LBL%' OR UPPER(p.number) LIKE '%LBNL%')
 		THEN p.number
 		ELSE NULL
@@ -83,6 +82,7 @@ SELECT DISTINCT
 			WHEN prp.[property] = 'editors'
 				THEN 'CONTRIBUTING'
 			ELSE NULL
+<<<<<<< HEAD
 
 		END AS "type",
 
@@ -128,7 +128,6 @@ SELECT DISTINCT
 	WHERE
 		supp_files.[Publication Record ID] = pr.[ID]
 		AND supp_files.[Proprietary ID] LIKE '%/supp/%'
-
 	FOR JSON AUTO
 	) AS [Supplemental Files]
 
@@ -171,6 +170,7 @@ FROM
 		OR os.[eschol_id] = pr.[Data Source Proprietary ID]
 
 WHERE
+<<<<<<< HEAD
 	-- Only consider certain types of pubs. Note: shifting from deny-list to allow-list
 	-- p.[Type] NOT IN ('Other', 'Preprint', 'Presentation')
 	p.[Type] IN (
@@ -235,6 +235,7 @@ GROUP BY
 	prf.[File URL],
 	prf.[File Extension],
 	prf.[Size],
+	prf.[File URL],
 	os.[doi],
 	os.[eschol_id]
 
