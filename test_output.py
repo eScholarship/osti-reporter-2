@@ -1,5 +1,5 @@
 import csv
-
+import json
 
 # -----------------------------
 def output_temp_table_query(sql):
@@ -30,13 +30,14 @@ def output_elements_query_results(new_osti_pubs):
 def output_submissions(new_osti_pubs, elink_version):
 
     if elink_version == 1:
-        for index, osti_pub_xml_string in enumerate(new_osti_pubs):
+        for index, osti_pub in enumerate(new_osti_pubs):
             filename = "v1-test-" + str(index)
             with open("test_output/v1_submissions/" + filename + ".xml", "wb") as out_file:
-                out_file.write(osti_pub_xml_string)
+                out_file.write(osti_pub['submission_xml_string'])
 
     elif elink_version == 2:
-        for index, osti_pub_json_string in enumerate(new_osti_pubs):
+        for index, osti_pub in enumerate(new_osti_pubs):
             filename = "v2-test-" + str(index)
+            osti_pub_json_string = json.dumps(osti_pub['submission_json'], indent=4)
             with open("test_output/v2_submissions/" + filename + ".json", "w") as out_file:
                 out_file.write(osti_pub_json_string)

@@ -1,7 +1,11 @@
 # Transform for OSTI E-Link Version 2
+# https://review.osti.gov/elink2api/#tag/records/operation/submitRecord
+# Required fields:
+# state, access_limitations, title, description, publication_date, released_to_osti_date
 
 import json
 import release_info
+from copy import deepcopy
 from pprint import pprint
 
 
@@ -11,7 +15,7 @@ def add_osti_data_v2(new_osti_pubs, testing_mode):
     print("Converting SQL results into JSON for E-Link v2.")
 
     # Main loop
-    new_osti_pubs_updated = []
+    new_osti_pubs_with_json = []
     for pub in new_osti_pubs:
 
         # Check the pub type and skip if it's not a type we care about
@@ -20,19 +24,23 @@ def add_osti_data_v2(new_osti_pubs, testing_mode):
             continue
 
         # Create the pub dict, init with hardcoded items
-        osti_pub = release_info.v2
+        # deepcopy is required for cloning nested dicts
+        osti_pub = deepcopy(release_info.v2)
 
         # ---------------------
         # Publication-specific metadata
         #   • Some items may not have DOIs.
         osti_pub['title'] = pub['title']
         osti_pub['product_type'] = pub['product_type']
-        if osti_pub['product_type'] == 'JA':  # TK  temp workaround
-            osti_pub['journal_type'] = 'FT'
+        if osti_pub['product_type'] == 'JA':
+            osti_pub['journal_type'] = 'FT'  # TK temp workaround
+            osti_pub['journal_name'] = pub['Journal Name']
+            osti_pub['volume'] = pub['volume']
+            osti_pub['issue'] = pub['issue']
         if pub['doi'] is not None:
             osti_pub['doi'] = pub['doi']
         osti_pub['site_unique_id'] = pub['id']
-        osti_pub['description'] = pub['abstract']
+        osti_pub['description'] = pub['abstract'] if pub['abstract'] is not None else 'PLACEHOLDER'
         osti_pub['publication_date'] = pub['Reporting Date 1']
         # osti_pub['opn_document_location'] = pub['eSchol URL'] # for OpenNet only.
         # osti_pub['format_information'] = pub['File Extension'] # Throws an error if included.
@@ -75,13 +83,14 @@ def add_osti_data_v2(new_osti_pubs, testing_mode):
             osti_pub['organizations'] += grants_json
 
         # JSON is serialized into string for testing output
-        if testing_mode:
-            osti_pub = json.dumps(osti_pub, indent=4)
+        # if testing_mode:
+        #     osti_pub = json.dumps(osti_pub, indent=4)
+        pub['submission_json'] = osti_pub
 
         # Add to the list
-        new_osti_pubs_updated.append(osti_pub)
+        new_osti_pubs_with_json.append(pub)
 
-    return new_osti_pubs_updated
+    return new_osti_pubs_with_json
 
 
 # ========================================

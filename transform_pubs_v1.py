@@ -1,9 +1,9 @@
 # Transform for OSTI E-Link Version 1
 import json
+from copy import deepcopy
 import release_info
 from pprint import pprint
 import xml.etree.ElementTree as ET
-
 
 
 # -----------------
@@ -12,13 +12,12 @@ def add_osti_data_v1(new_osti_pubs, test_mode):
 
     print("Converting SQL results into XML for E-Link v1.")
 
-    osti_pubs_xml = []
-
+    new_osti_pubs_with_xml = []
     for pub in new_osti_pubs:
 
         # ---------------------
         # 1. Create a dict, init with hardcoded items
-        osti_pub = release_info.v1
+        osti_pub = deepcopy(release_info.v1)
 
         # ---------------------
         # 2. Publication-specific
@@ -42,7 +41,7 @@ def add_osti_data_v1(new_osti_pubs, test_mode):
             continue
 
         # File URL
-        # Note: We are using the eschol/content/id/id.pdf URLs here.
+        # Note: We are using the eschol/content/id/id.pdf URLs here -- these SHOULD always exist.
         if pub['File URL'] is None:
             print("Publication doesn't have an eSchol File URL, skipping.")
             continue
@@ -69,15 +68,17 @@ def add_osti_data_v1(new_osti_pubs, test_mode):
         # Convert to dict to the OSTI XML format
         osti_pub_xml = dict_to_osti_xml(osti_pub)
 
-        # XML to string formatting
+        # Convert XML to string formatting
         if test_mode:
             ET.indent(osti_pub_xml)
-        osti_pub_xml = ET.tostring(osti_pub_xml, encoding='ascii', xml_declaration=True)
+        osti_pub_xml = ET.tostring(osti_pub_xml, encoding='utf-8', xml_declaration=True)
+
+        pub['submission_xml_string'] = osti_pub_xml
 
         # Add the item to the list
-        osti_pubs_xml.append(osti_pub_xml)
+        new_osti_pubs_with_xml.append(pub)
 
-    return osti_pubs_xml
+    return new_osti_pubs_with_xml
 
 
 # ========================================
@@ -152,10 +153,12 @@ def get_product_type_fields(pub):
             pt['product_type'] = 'JA'
 
             # Journal, Volume, issue (if available)
-            if pub['journal'] is not None:
-                pt['journal_name'] = pub['journal']
+            if pub['Journal Name'] is not None:
+                pt['journal_name'] = pub['Journal Name']
+
             if pub['volume'] is not None:
                 pt['journal_volume'] = pub['volume']
+
             if pub['issue'] is not None:
                 pt['journal_issue'] = pub['issue']
 

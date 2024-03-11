@@ -1,12 +1,12 @@
 # OSTI eLink documentation https://review.osti.gov/elink2api/
 # External libraries
-import argparse
 from pprint import pprint
 import requests
 
 # This script requires a "creds.py" in its directory.
 # See "creds_template.py" for the required format.
 import creds
+import args_and_creds
 import eschol_db_functions
 import elements_db_functions
 import transform_pubs_v1  # TK can remove this when E-link v.2 goes live.
@@ -23,49 +23,15 @@ osti_v1_pubs = []
 submission_api_url = "https://review.osti.gov/elink2api/records/submit"
 
 # -----------------------------
-# Arguments
-parser = argparse.ArgumentParser()
-
-parser.add_argument("-c", "--connection",
-                    dest="connection",
-                    type=str.lower,
-                    help="REQUIRED. Specify ONLY 'qa' or 'production'")
-
-parser.add_argument("-t", "--tunnel",
-                    dest="tunnel_needed",
-                    action="store_true",
-                    default=False,
-                    help="Optional. Include to run the connection through a tunnel.")
-
-parser.add_argument("-u", "--updates",
-                    dest="send_updates",
-                    action="store_true",
-                    default=False,
-                    help="Optional. If this flag is included, the program will send updates to OSTI \
-                        for publications already in their database. Default is false, where only \
-                        new publications are sent.")
-
-parser.add_argument("-v", "--version",
-                    dest="elink_version",
-                    type=int,
-                    default=2,
-                    help="Specify OSTI elink version 1 or 2 (default)")
-
-parser.add_argument("-x", "--test",
-                    dest="test",
-                    action="store_true",
-                    default=False,
-                    help="Outputs update XML or JSON to disk rather than sending to OSTI API.")
-
-args = parser.parse_args()
+# Process and validate arguments
+args = args_and_creds.process_args()
 
 
 # ========================================
 def main():
 
-
     # Returns an ssh server if needed, otherwise None.
-    ssh_server = validate_args_and_assign_creds()
+    ssh_server = assign_creds_and_get_tunnel()
 
     # Get the data from the eschol_osti db
     osti_eschol_db_pubs = eschol_db_functions.get_osti_db(mysql_creds)
@@ -86,11 +52,14 @@ def main():
     elif args.elink_version == 2:
         new_osti_pubs = transform_pubs_v2.add_osti_data_v2(new_osti_pubs, args.test)
 
-    # Call OSTI API or output to files
+    # Output files if using test mode.
     if args.test:
         test_output.output_submissions(new_osti_pubs, args.elink_version)
+
+    # Otherwise, send the jsons or xmls to the osti API.
     else:
-        call_osti_api(new_osti_pubs, args.elink_version)
+        new_osti_pubs = call_osti_api(new_osti_pubs, args.elink_version)
+        process_responses(new_osti_pubs)
 
     # Close SSH tunnel if needed
     if ssh_server:
@@ -100,42 +69,103 @@ def main():
 
 
 # =======================================
-# Loop the publications, send the XML or JSON
-def call_osti_api(new_osti_pubs, elink_version):
-    if elink_version == 1:
-        pass  # TK
+# TK TK send the response data (e.g. osti_id) to our database --> Elements pub record eventually.
+def process_responses(new_osti_pubs_with_responses):
+    print("PLACEHOLDER for updating the osti_eschol db. Response status codes and jsons:")
+    for pub in new_osti_pubs_with_responses:
+        pprint(pub['response_status_code'])
+        pprint(pub['response_json'])
 
-    elif elink_version == 2:
-        for i in range(40, 45):
-            req_url = osti_creds['base_url'] + "/records/submit"
-            headers = {'Authorization': 'Bearer ' + osti_creds['token']}
-            pub_json = new_osti_pubs[i]
-            response = requests.post(req_url, json=pub_json, headers=headers)
+
+# =======================================
+# Loop the publications, send the XML or JSON, and adds the response to the dict.
+def call_osti_api(new_osti_pubs, elink_version):
+    print("\n", len(new_osti_pubs), "new publications for submission.")
+
+    # Elink 1 submissions ----------------------
+    if elink_version == 1:
+
+        for i, osti_pub in enumerate(new_osti_pubs, 1):
+
+            # TK TK elink v1 testing goes here.
+            print(osti_pub)
+            exit()
+
+            if i == submission_limit:
+                print("Submission limit hit. Breaking submission loop.")
+                break
+
+            print("Submitting:", i, ": Publication ID: ", osti_pub['id'])
+
+            # Build the request
+            req_url = osti_creds['token'] + "/records/submit"
+            headers = {'Content-type': 'text/xml'}
+            auth_data = (osti_creds['username'], osti_creds['password'])
+
+            response = requests.post(
+                req_url,
+                data=osti_pub['submission_xml_string'],
+                headers=headers,
+                auth=auth_data)
+
+            # Save the response data
+            osti_pub['response_status_code'] = response.status_code
+            osti_pub['response_json'] = response.json()
+            pprint(response)
 
             if response.status_code >= 300:
+                print("\nResponse status code > 300...")
+                osti_pub['response_success'] = False
+
+            else:
+                print("\nSubmission OK.")
+                osti_pub['response_success'] = True
+                pprint(response)
+
+        pass  # TK
+
+    # Elink 2 submissions ----------------------
+    elif elink_version == 2:
+
+        for i, osti_pub in enumerate(new_osti_pubs, 1):
+
+            if i == submission_limit:
+                print("Submission limit hit. Breaking submission loop.")
+                break
+
+            print("Submitting:", i, ": Publication ID: ", osti_pub['id'])
+
+            req_url = osti_creds['base_url'] + "/records/submit"
+            headers = {'Authorization': 'Bearer ' + osti_creds['token']}
+            response = requests.post(
+                req_url,
+                json=osti_pub['submission_json'],
+                headers=headers)
+
+            # Save the response data
+            osti_pub['response_status_code'] = response.status_code
+            osti_pub['response_json'] = response.json()
+
+            if response.status_code >= 300:
+                print("Response status code > 300...\n")
+                osti_pub['response_success'] = False
+
+                # for testing
                 print(response)
                 pprint(response.json())
-                pprint(pub_json)
+                pprint(osti_pub['submission_json'])
+
+            else:
+                print("Submission OK.\n")
+                osti_pub['response_success'] = True
+
+    return new_osti_pubs
 
 
 # =======================================
 # Vars and creds setup
-def validate_args_and_assign_creds():
+def assign_creds_and_get_tunnel():
     global sql_creds, api_creds, osti_creds, mysql_creds
-
-    # Validate args
-    if (
-            args.connection == 'qa'
-            or args.connection == 'production'
-    ) and (
-            args.elink_version == 1
-            or args.elink_version == 2
-    ):
-        pass
-    else:
-        print("Invalid arguments. See here:")
-        print(parser.print_help())
-        exit(1)
 
     # Loads creds based on the above flags
     # --------- QA
