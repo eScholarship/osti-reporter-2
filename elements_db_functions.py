@@ -1,9 +1,5 @@
 import pyodbc
 import test_output
-<<<<<<< HEAD
-
-=======
->>>>>>> 3bcd62a (Moved testing output to its own file; Elements SQL query revisions)
 
 
 # --------------------------
@@ -41,10 +37,7 @@ def get_new_osti_pubs(sql_creds, osti_eschol_db, args):
 
     print("Creating temp table with submitted OSTI data.")
     temp_table_query = create_submitted_temp_table(osti_eschol_db)
-<<<<<<< HEAD
 
-=======
->>>>>>> 3bcd62a (Moved testing output to its own file; Elements SQL query revisions)
     if args.test:
         test_output.output_temp_table_query(temp_table_query)
 
@@ -112,11 +105,8 @@ GO
 
 # --------------------------
 def get_full_temp_table(cursor):
+    # cursor.execute("SELECT * FROM #osti_submitted;")
     cursor.execute("SELECT * FROM #osti_submitted;")
     columns = [column[0] for column in cursor.description]
     rows = [dict(zip(columns, row)) for row in cursor.fetchall()]
     return rows
-<<<<<<< HEAD
-
-=======
->>>>>>> 3bcd62a (Moved testing output to its own file; Elements SQL query revisions)
