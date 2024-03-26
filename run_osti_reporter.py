@@ -17,6 +17,11 @@ import test_output
 # Global vars
 submission_limit = 200
 submission_count = 0
+<<<<<<< HEAD
+=======
+
+# submission_api_url = "https://review.osti.gov/elink2api/records/submit"
+>>>>>>> test-run-prep
 
 # submission_api_url = "https://review.osti.gov/elink2api/records/submit"
 
@@ -31,7 +36,6 @@ def main():
 
     # Returns an open/running ssh server if needed, otherwise False.
     ssh_server = program_setup.get_ssh_server(args, creds['ssh'])
-
 
     # Get the data from the eschol_osti db
     osti_eschol_db_pubs = eschol_db_functions.get_eschol_osti_db(creds['eschol_db_read'])
