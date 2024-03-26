@@ -20,7 +20,6 @@ submission_count = 0
 
 # submission_api_url = "https://review.osti.gov/elink2api/records/submit"
 
-
 # ========================================
 def main():
 
@@ -32,6 +31,7 @@ def main():
 
     # Returns an open/running ssh server if needed, otherwise False.
     ssh_server = program_setup.get_ssh_server(args, creds['ssh'])
+
 
     # Get the data from the eschol_osti db
     osti_eschol_db_pubs = eschol_db_functions.get_eschol_osti_db(creds['eschol_db_read'])
@@ -78,6 +78,5 @@ def main():
 
 
 # =======================================
-# Stub for main
 if __name__ == "__main__":
     main()

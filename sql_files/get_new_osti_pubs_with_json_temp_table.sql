@@ -64,7 +64,10 @@ SELECT DISTINCT
 	-- FOR JSON (PATH|AUTO) can be used with tables in the FROM clause, but the
 	-- selected fields then need to be listed in GROUP BY, thereby negating the aggregation.
 
+
 	-- Authors JSON
+	-- Note: The 500-author limit is a carryover from the OSTI v1 ruby,
+    -- it limits submission data size for thousand-author publications.
 	(SELECT
 		prp.[Last Name] AS "last_name",
 		prp.[First Name] AS "first_name",
@@ -80,6 +83,7 @@ SELECT DISTINCT
 			WHEN prp.[property] = 'editors'
 				THEN 'CONTRIBUTING'
 			ELSE NULL
+
 		END AS "type",
 
 		CASE WHEN prp.[property] = 'editors'
