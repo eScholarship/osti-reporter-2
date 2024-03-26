@@ -18,9 +18,6 @@ import test_output
 submission_limit = 200
 submission_count = 0
 
-# submission_api_url = "https://review.osti.gov/elink2api/records/submit"
-
-
 # ========================================
 def main():
 
