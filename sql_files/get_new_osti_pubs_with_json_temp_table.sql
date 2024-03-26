@@ -64,7 +64,6 @@ SELECT DISTINCT
 	-- FOR JSON (PATH|AUTO) can be used with tables in the FROM clause, but the
 	-- selected fields then need to be listed in GROUP BY, thereby negating the aggregation.
 
-
 	-- Authors JSON
 	-- Note: The 500-author limit is a carryover from the OSTI v1 ruby,
     -- it limits submission data size for thousand-author publications.
