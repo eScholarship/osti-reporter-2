@@ -1,4 +1,6 @@
 # Transform for OSTI E-Link Version 1
+# OSTI documentation:
+# https://www.osti.gov/elink/241-1api.jsp
 import json
 from copy import deepcopy
 import release_info
@@ -32,10 +34,9 @@ def add_osti_data_v1(new_osti_pubs, test_mode):
         # 3. XML fields requiring calculation
 
         # File info
-        if pub['File Extension'] == 'pdf':
+        # Note: DOCX files are converted to PDF in the eScholarship/content/... link.
+        if pub['File Extension'] == 'pdf' or pub['File Extension'] == 'docx':
             osti_pub['file_format'] = 'PDFN'
-        elif pub['File Extension'] == 'docx':
-            osti_pub['file_format'] = 'DOCX'
         else:
             print("Publication's file format ≠ pdf or docx, skipping.")
             continue
@@ -49,9 +50,8 @@ def add_osti_data_v1(new_osti_pubs, test_mode):
             osti_pub['site_url'] = pub['File URL']
 
         # LBL Record numbers
-        report_no = get_lbl_report_number(pub)
-        if report_no is not False:
-            osti_pub['report_nos'] = report_no
+        # This is a required field, will return string "None" if empty.
+        osti_pub['report_nos'] = get_lbl_report_number(pub)
 
         # Authors require JSON-to-text conversion
         osti_pub['author'] = get_v1_authors(json.loads(pub['authors']))
@@ -116,7 +116,7 @@ def dict_to_osti_xml(pub_dict):
 
 def get_lbl_report_number(pub):
     if pub['LBL Report Number'] is None:
-        return False
+        return "None"
     elif pub['LBL Report Number'][:5] == 'LBNL-':
         return pub['LBL Report Number']
     else:
@@ -179,7 +179,7 @@ def get_product_type_fields(pub):
 
         case 'conference papers' | 'poster':
             pt['product_type'] = 'CO'
-            pt['medium_code'] = 'ER'
+            pt['medium_code'] = 'ED'
             if pub['name-of-conference'] is not None:
                 pt['conference_information'] = pub['name-of-conference']
 
