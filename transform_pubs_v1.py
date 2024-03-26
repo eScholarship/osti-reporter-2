@@ -147,47 +147,41 @@ def get_product_type_fields(pub):
     if pub['LBL Report Number'] is not None:
         pub['Type'] = 'report'
 
-    match pub['Type'].lower():
+    match_pub_type = pub['Type'].lower()
 
-        case 'journal article':
-            pt['product_type'] = 'JA'
+    if match_pub_type == 'journal article':
+        # Journal, OA, and medium (electronic document)
+        pt['product_type'] = 'JA'
+        pt['journal_type'] = 'AM'
+        pt['medium_code'] = 'ED'
 
-            # Journal, Volume, issue (if available)
-            if pub['Journal Name'] is not None:
-                pt['journal_name'] = pub['Journal Name']
+        # Journal, Volume, issue (if available)
+        if pub['Journal Name'] is not None:
+            pt['journal_name'] = pub['Journal Name']
 
-            if pub['volume'] is not None:
-                pt['journal_volume'] = pub['volume']
+        if pub['volume'] is not None:
+            pt['journal_volume'] = pub['volume']
 
-            if pub['issue'] is not None:
-                pt['journal_issue'] = pub['issue']
+        if pub['issue'] is not None:
+            pt['journal_issue'] = pub['issue']
 
-            # Filetype and OA
-            pt['journal_type'] = 'AM'
-            pt['medium_code'] = 'ED'
+    elif match_pub_type == 'monograph' or match_pub_type == 'chapter':
+        pt['product_type'] = 'B'
+        pt['medium_code'] = 'ED'
+        if pub['Type'].lower() == 'chapter' and pub['parent-title'] is not None:
+            pt['related_doc_info'] = "Book Title: " + pub['parent-title']
 
-            # These medium types are for open access URLs, which we no longer use
-            # else:
-            #    pt['journal_type'] = 'AC'
-            #    pt['medium_code'] = 'X'
+    elif match_pub_type == 'conference papers' or match_pub_type == 'poster':
+        pt['product_type'] = 'CO'
+        pt['medium_code'] = 'ED'
+        if pub['name-of-conference'] is not None:
+            pt['conference_information'] = pub['name-of-conference']
 
-        case 'monograph' | 'chapter':
-            pt['product_type'] = 'B'
-            pt['medium_code'] = 'ED'
-            if pub['Type'].lower() == 'chapter' and pub['parent-title'] is not None:
-                pt['related_doc_info'] = "Book Title: " + pub['parent-title']
+    elif match_pub_type == 'report':
+        pt['product_type'] = 'TR'
+        pt['medium_code'] = 'ED'
 
-        case 'conference papers' | 'poster':
-            pt['product_type'] = 'CO'
-            pt['medium_code'] = 'ED'
-            if pub['name-of-conference'] is not None:
-                pt['conference_information'] = pub['name-of-conference']
-
-        case 'report':
-            pt['product_type'] = 'TR'
-            pt['medium_code'] = 'ED'
-
-        case _:
-            pt['product_type'] = 'UNKNOWN'
+    else:
+        pt['product_type'] = 'UNKNOWN'
 
     return pt
