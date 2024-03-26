@@ -134,8 +134,9 @@ def get_pub_type_fields(pub):
 # -----------------
 # Returns fields based on publication type
 def get_product_type(pub_type):
-    match pub_type:
-        case 'Journal article': return 'JA'
+
+    if pub_type == 'Journal article':
+        return 'JA'
         # Note: Many of these have matching codes in v2 (e.g. CO, OT, TR)
         # case 'Monograph' | 'Chapter':
         # See also monographic_title
