@@ -17,11 +17,6 @@ import test_output
 # Global vars
 submission_limit = 200
 submission_count = 0
-<<<<<<< HEAD
-=======
-
-# submission_api_url = "https://review.osti.gov/elink2api/records/submit"
->>>>>>> test-run-prep
 
 # submission_api_url = "https://review.osti.gov/elink2api/records/submit"
 
