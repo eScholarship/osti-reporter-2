@@ -20,7 +20,6 @@ submission_count = 0
 
 # submission_api_url = "https://review.osti.gov/elink2api/records/submit"
 
-
 # ========================================
 def main():
 
@@ -78,6 +77,5 @@ def main():
 
 
 # =======================================
-# Stub for main
 if __name__ == "__main__":
     main()
