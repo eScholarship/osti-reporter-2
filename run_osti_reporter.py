@@ -1,6 +1,7 @@
 # OSTI eLink documentation https://review.osti.gov/elink2api/
+
+# ========================================
 # External libraries
-from pprint import pprint
 
 # This script requires a "creds.py" in its directory.
 # See "creds_template.py" for the required format.
@@ -8,19 +9,14 @@ import program_setup
 import write_logs
 import eschol_db_functions
 import elements_db_functions
-import transform_pubs_v1  # TK can remove this when E-link v.2 goes live.
-import submit_pubs_v1  # TK can remove this when E-link v.2 goes live.
+import transform_pubs_v1    # Can remove this when E-link v2 goes live.
+import submit_pubs_v1       # Can remove this when E-link v2 goes live.
 import transform_pubs_v2
 import submit_pubs_v2
-import test_output
 
-from datetime import datetime
-
-# -----------------------------
+# ========================================
 # Global vars
 submission_limit = 200
-
-# submission_api_url = "https://review.osti.gov/elink2api/records/submit"
 
 
 # ========================================
@@ -45,8 +41,7 @@ def main():
     osti_eschol_temp_table_query = elements_db_functions.create_submitted_temp_table(osti_eschol_db_pubs)
 
     # Log temp table query
-    if args.test:
-        write_logs.output_temp_table_query(log_folder, osti_eschol_temp_table_query)
+    write_logs.output_temp_table_query(log_folder, osti_eschol_temp_table_query)
 
     # Get the publications which need to be sent, exit if there's none.
     new_osti_pubs = elements_db_functions.get_new_osti_pubs(
@@ -57,8 +52,7 @@ def main():
         exit(0)
 
     # Log Elements query results
-    if args.test:
-        write_logs.output_elements_query_results(log_folder, new_osti_pubs)
+    write_logs.output_elements_query_results(log_folder, new_osti_pubs)
 
     # Add OSTI-specific metadata
     if args.elink_version == 1:
@@ -67,10 +61,12 @@ def main():
     elif args.elink_version == 2:
         new_osti_pubs = transform_pubs_v2.add_osti_data_v2(new_osti_pubs, args.test)
 
-    # Output submission files if using test mode.
+    # Log submission files
+    write_logs.output_submissions(log_folder, new_osti_pubs, args.elink_version)
+
+    # If running in test mode, note the number of new pubs and exit.
     if args.test:
-        print("\n", len(new_osti_pubs), "new publications for test output.")
-        write_logs.output_submissions(log_folder, new_osti_pubs, args.elink_version)
+        print("\n", len(new_osti_pubs), "new publications -- Test output only.")
 
     # Otherwise, send the json or xml submissions to the osti API.
     else:
