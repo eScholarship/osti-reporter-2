@@ -18,7 +18,7 @@ def process_args():
                         dest="elink_qa",
                         action="store_true",
                         default=False,
-                        help="Submit to eLink's QA servers (works w/ eLink v1 and v2).")
+                        help="Submit new OSTI pubs to eLink's QA servers.")
 
     parser.add_argument("-oq", "--output-qa",
                         dest="output_qa",

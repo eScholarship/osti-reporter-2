@@ -1,10 +1,11 @@
 import pyodbc
 import test_output
+import write_logs
 
 
 # --------------------------
 # Query the Elements DB, find pubs which need to be sent.
-def get_new_osti_pubs(sql_creds, osti_eschol_db, args):
+def get_new_osti_pubs(sql_creds, temp_table_query, args, log_folder):
 
     # Load SQL file
     try:
@@ -35,16 +36,13 @@ def get_new_osti_pubs(sql_creds, osti_eschol_db, args):
     conn.autocommit = True  # Required when queries use TRANSACTION
     cursor = conn.cursor()
 
-    print("Creating temp table with submitted OSTI data.")
-    temp_table_query = create_submitted_temp_table(osti_eschol_db)
-
-    if args.test:
-        test_output.output_temp_table_query(temp_table_query)
+    # if args.test:
+    #    test_output.output_temp_table_query(temp_table_query)
 
     # Execute the temp table query in Elements
     cursor.execute(temp_table_query)
     if args.test:
-        test_output.output_temp_table_results(get_full_temp_table(cursor))
+        write_logs.output_temp_table_results(log_folder, get_full_temp_table(cursor))
 
     print("Executing query to retrieve new OSTI pubs.")
     cursor.execute(sql_query)
@@ -58,6 +56,8 @@ def get_new_osti_pubs(sql_creds, osti_eschol_db, args):
 
 # --------------------------
 def create_submitted_temp_table(osti_eschol_db):
+    print("Creating temp table with submitted OSTI data.")
+
     temp_table = '''
 BEGIN TRANSACTION 
 CREATE TABLE #osti_submitted
@@ -105,7 +105,6 @@ GO
 
 # --------------------------
 def get_full_temp_table(cursor):
-    # cursor.execute("SELECT * FROM #osti_submitted;")
     cursor.execute("SELECT * FROM #osti_submitted;")
     columns = [column[0] for column in cursor.description]
     rows = [dict(zip(columns, row)) for row in cursor.fetchall()]
