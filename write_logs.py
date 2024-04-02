@@ -26,7 +26,7 @@ def output_temp_table_results(log_folder, rows):
 
 
 def output_elements_query_results(log_folder, new_osti_pubs):
-    with open(log_folder + '/elements-query-result.csv', 'w') as outfile:
+    with open(log_folder + '/elements_query_result.csv', 'w') as outfile:
         csv_writer = csv.writer(outfile)
         csv_writer.writerow(new_osti_pubs[0].keys())
         for row in new_osti_pubs:

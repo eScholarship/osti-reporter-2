@@ -14,11 +14,11 @@ LBL is required to submit DOE-funded papers to OSTI, which we do via OSTI's E-Li
 ## QA / Testing options
 * This program can produce output for E-Link v1 (XML), and E-Link v2 (JSON). These can be selected with the argument -v 1 or -v 2.
 * QA args:
-  * -x / --test : Output .xml or .json files to disk, skipping the submission and mysql db updates. 
+  * -x / --test : Outputs .xml or .json files to disk, skipping the submission and mysql db updates. 
   * -iq / --input-qa : Pull data from Elements QA reporting db
   * -eq / --elink-qa : Send to OSTI's staging databases
   * -oq / --output-qa : Update the staging mysql db
-* A typical QA run ```python3 run_osti_reporter -v 1 -eq -oq``` will take prod data as input, and proceed to use QA for the ELink submissions and mysql db updates.
+* A typical QA run: ```python3 run_osti_reporter.py -v 1 -eq -oq``` will take prod data as input, and proceed to use QA for the ELink submissions and mysql db updates.
 
 ## Subi Specifics
 Subi is running Python 3.7, so there's a few things to be aware of:

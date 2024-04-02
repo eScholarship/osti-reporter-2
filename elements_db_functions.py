@@ -36,13 +36,11 @@ def get_new_osti_pubs(sql_creds, temp_table_query, args, log_folder):
     conn.autocommit = True  # Required when queries use TRANSACTION
     cursor = conn.cursor()
 
-    # if args.test:
-    #    test_output.output_temp_table_query(temp_table_query)
-
     # Execute the temp table query in Elements
     cursor.execute(temp_table_query)
-    if args.test:
-        write_logs.output_temp_table_results(log_folder, get_full_temp_table(cursor))
+
+    # Log the Elements temp table output.
+    write_logs.output_temp_table_results(log_folder, get_full_temp_table(cursor))
 
     print("Executing query to retrieve new OSTI pubs.")
     cursor.execute(sql_query)
