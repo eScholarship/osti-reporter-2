@@ -1,6 +1,7 @@
 import csv
 import json
 
+
 # -----------------------------
 def output_temp_table_query(sql):
     with open("test_output/temp_table_query.sql", "w") as outfile:

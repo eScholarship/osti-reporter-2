@@ -69,12 +69,13 @@ def add_osti_data_v1(new_osti_pubs, test_mode):
         osti_pub_xml = dict_to_osti_xml(osti_pub)
 
         # Convert XML to string formatting
+
         # Python v3.8 and above
         # if test_mode:
         #    ET.indent(osti_pub_xml)
         # osti_pub_xml = ET.tostring(osti_pub_xml, encoding='utf-8', xml_declaration=True)
 
-        # Python v3.7 on subi
+        # Python v3.7 (subi)
         osti_pub_xml = ET.tostring(osti_pub_xml, encoding='utf-8')
         osti_pub_xml = b"<?xml version='1.0' encoding='utf-8'?>\n" + osti_pub_xml
 
