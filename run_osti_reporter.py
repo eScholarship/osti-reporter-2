@@ -14,6 +14,7 @@ import submit_pubs_v1       # Can remove this when E-link v2 goes live.
 import transform_pubs_v2
 import submit_pubs_v2
 
+
 # ========================================
 # Global vars
 submission_limit = 200
@@ -64,7 +65,7 @@ def main():
     # Log submission files
     write_logs.output_submissions(log_folder, new_osti_pubs, args.elink_version)
 
-    # If running in test mode, note the number of new pubs and exit.
+    # If running in test mode, skip the submission step.
     if args.test:
         print("\n", len(new_osti_pubs), "new publications -- Test output only.")
 
@@ -74,10 +75,12 @@ def main():
 
         if args.elink_version == 1:
             new_osti_pubs = submit_pubs_v1.submit_pubs(new_osti_pubs, creds['osti_api'], submission_limit)
+            write_logs.output_responses(log_folder, new_osti_pubs, args.elink_version)
             eschol_db_functions.update_eschol_osti_db(new_osti_pubs, creds['eschol_db_write'])
 
         elif args.elink_version == 2:
             new_osti_pubs = submit_pubs_v2.submit_pubs(new_osti_pubs, creds['osti_api'], submission_limit)
+            write_logs.output_responses(log_folder, new_osti_pubs, args.elink_version)
             eschol_db_functions.update_eschol_osti_db(new_osti_pubs, creds['eschol_db_write'])
 
     # Close SSH tunnel if needed
