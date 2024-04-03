@@ -42,6 +42,9 @@ def get_new_osti_pubs(sql_creds, temp_table_query, args, log_folder):
     # Log the Elements temp table output.
     write_logs.output_temp_table_results(log_folder, get_full_temp_table(cursor))
 
+    # Elements query: Replace variable definitions with appropriate URLS
+    sql_query = replace_url_variable_values(args.input_qa, sql_query)
+
     print("Executing query to retrieve new OSTI pubs.")
     cursor.execute(sql_query)
 
@@ -107,3 +110,25 @@ def get_full_temp_table(cursor):
     columns = [column[0] for column in cursor.description]
     rows = [dict(zip(columns, row)) for row in cursor.fetchall()]
     return rows
+
+
+# --------------------------
+def replace_url_variable_values(input_qa, sql_query):
+
+    if input_qa:
+        sql_query = sql_query.replace(
+            'ELEMENTS_PUB_URL_REPLACE',
+            'https://qa-oapolicy.universityofcalifornia.edu/viewobject.html?cid=1&id=')
+        sql_query = sql_query.replace(
+            'ESCHOL_FILES_URL_REPLACE',
+            'https://pub-jschol2-stg.escholarship.org/content/')
+
+    else:
+        sql_query = sql_query.replace(
+            'ELEMENTS_PUB_URL_REPLACE',
+            'https://oapolicy.universityofcalifornia.edu/viewobject.html?cid=1&id=')
+        sql_query = sql_query.replace(
+            'ESCHOL_FILES_URL_REPLACE',
+            'https://escholarship.org/content/')
+
+    return sql_query

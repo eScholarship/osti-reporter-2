@@ -5,20 +5,16 @@ DECLARE @fiscal_year_cutoff date =
         ELSE CONVERT(VARCHAR, YEAR(GETDATE()) - 2) + '-10-01'
 	END;
 
--- Elements URLs
-DECLARE @elements_pub_url_prod VARCHAR(120) = 'https://oapolicy.universityofcalifornia.edu/viewobject.html?cid=1&id=';
-DECLARE @elements_pub_url_qa VARCHAR(120) = 'https://qa-oapolicy.universityofcalifornia.edu/viewobject.html?cid=1&id=';
-
--- eScholarship URLs
-DECLARE @eschol_files_url_prod VARCHAR(120) = 'https://escholarship.org/content/';
-DECLARE @eschol_files_url_qa VARCHAR(120) = 'https://pub-jschol2-stg.escholarship.org/content/';
+-- Elements and eScholarship URLs, values replaced in elements_db_functions.get_new_osti_pubs.py
+DECLARE @elements_pub_url VARCHAR(120) = 'ELEMENTS_PUB_URL_REPLACE';
+DECLARE @eschol_files_url VARCHAR(120) = 'ESCHOL_FILES_URL_REPLACE';
 
 -- Main query
 SELECT DISTINCT
 	os.[doi] AS [OSTI doi],
 	os.[eschol_id] AS [OSTI eschol_id],
     p.id,
- 	CONCAT(@elements_pub_url_prod, p.id) as [Elements URL],
+ 	CONCAT(@elements_pub_url, p.id) as [Elements URL],
 	p.title,
 	p.[Type],
 	p.[publication-status],
@@ -43,7 +39,7 @@ SELECT DISTINCT
 	-- Note: These PDFs are created during deposit and are live after a few seconds after deposit.
 	-- DOCX files are converted to PDFs, and the eScholarship title page is created and prepended.
 	-- There CAN be errors during the creation process, but it's rare in practice.
-	CONCAT(@eschol_files_url_prod, max(pr.[Data Source Proprietary ID]),
+	CONCAT(@eschol_files_url, max(pr.[Data Source Proprietary ID]),
 		'/', max(pr.[Data Source Proprietary ID]), '.pdf') AS [File URL],
 
 	-- Use a fallback for journals without Canonical Titles (eg. bioarxive)
@@ -116,7 +112,7 @@ SELECT DISTINCT
 
 	-- Supplemental Files JSON
 	(SELECT
-		CONCAT(@eschol_files_url_prod, pr.[Data Source Proprietary ID],
+		CONCAT(@eschol_files_url, pr.[Data Source Proprietary ID],
 		    '/supp/', supp_files.[Filename]) AS "url",
 		supp_files.[File Extension] AS "file_extension"
 	FROM
