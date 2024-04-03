@@ -4,7 +4,7 @@ Working Files/
 __pycache__/
 creds.py
 release_info.py
-test_output/
+submission_comparison/
 OSTI v1 record submission examples/
 /venv/
-logs/
+logs/*
