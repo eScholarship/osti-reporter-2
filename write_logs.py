@@ -37,13 +37,31 @@ def output_submissions(log_folder, new_osti_pubs, elink_version):
 
     if elink_version == 1:
         for index, osti_pub in enumerate(new_osti_pubs):
-            filename = "V1-" + str(index)
+            filename = "V1-" + str(index) + "-SUBMISSION"
             with open(log_folder + "/" + filename + ".xml", "wb") as out_file:
                 out_file.write(osti_pub['submission_xml_string'])
 
     elif elink_version == 2:
         for index, osti_pub in enumerate(new_osti_pubs):
-            filename = "V2-" + str(index)
+            filename = "V2-" + str(index) + "-SUBMISSION"
             osti_pub_json_string = json.dumps(osti_pub['submission_json'], indent=4)
             with open(log_folder + "/" + filename + ".json", "w") as out_file:
                 out_file.write(osti_pub_json_string)
+
+
+def output_responses(log_folder, new_osti_pubs, elink_version):
+
+    if elink_version == 1:
+        responses = [pub['response_xml_text'] for pub in new_osti_pubs]
+        for index, response_xml_text in enumerate(responses):
+            filename = "V1-" + str(index) + "-RESPONSE"
+            with open(log_folder + "/" + filename + ".xml", "w") as out_file:
+                out_file.write(response_xml_text)
+
+    elif elink_version == 2:
+        responses = [pub['response_json'] for pub in new_osti_pubs]
+        for index, response_json in enumerate(responses):
+            filename = "V2-" + str(index) + "-RESPONSE"
+            response_json_string = json.dumps(response_json, indent=4)
+            with open(log_folder + "/" + filename + ".json", "w") as out_file:
+                out_file.write(response_json_string)

@@ -1,5 +1,5 @@
 import pyodbc
-import test_output
+import submission_comparison
 import write_logs
 
 
@@ -10,7 +10,7 @@ def get_new_osti_pubs(sql_creds, temp_table_query, args, log_folder):
     # Load SQL file
     try:
         # sql_file = open("sql_files/get_new_osti_pubs_with_json.sql")
-        sql_file = open("sql_files/get_new_osti_pubs_with_json_temp_table.sql")
+        sql_file = open("sql_files/get_new_osti_pubs_from_elements.sql")
         sql_query = sql_file.read()
 
     except Exception as e:
