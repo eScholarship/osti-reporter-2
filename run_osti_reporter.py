@@ -58,7 +58,6 @@ def main():
     # Add OSTI-specific metadata
     if args.elink_version == 1:
         new_osti_pubs = transform_pubs_v1.add_osti_data_v1(new_osti_pubs, args.test)
-
     elif args.elink_version == 2:
         new_osti_pubs = transform_pubs_v2.add_osti_data_v2(new_osti_pubs, args.test)
 
@@ -69,19 +68,20 @@ def main():
     if args.test:
         print("\n", len(new_osti_pubs), "new publications -- Test output only.")
 
-    # Otherwise, send the json or xml submissions to the osti API.
+    # Otherwise, send the xml (v1) or json (v2) submissions to the OSTI API.
     else:
         print("\n", len(new_osti_pubs), "new publications for submission.")
 
         if args.elink_version == 1:
             new_osti_pubs = submit_pubs_v1.submit_pubs(new_osti_pubs, creds['osti_api'], submission_limit)
-            write_logs.output_responses(log_folder, new_osti_pubs, args.elink_version)
-            eschol_db_functions.update_eschol_osti_db(new_osti_pubs, creds['eschol_db_write'])
-
         elif args.elink_version == 2:
             new_osti_pubs = submit_pubs_v2.submit_pubs(new_osti_pubs, creds['osti_api'], submission_limit)
-            write_logs.output_responses(log_folder, new_osti_pubs, args.elink_version)
-            eschol_db_functions.update_eschol_osti_db(new_osti_pubs, creds['eschol_db_write'])
+
+        # Log OSTI API responses
+        write_logs.output_responses(log_folder, new_osti_pubs, args.elink_version)
+
+        # Update eSchol OSTI DB with new successful submissions
+        eschol_db_functions.update_eschol_osti_db(new_osti_pubs, creds['eschol_db_write'])
 
     # Close SSH tunnel if needed
     if ssh_server:

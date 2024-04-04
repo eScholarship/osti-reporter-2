@@ -19,8 +19,6 @@ SELECT DISTINCT
 	p.[Type],
 	p.[publication-status],
 	pr.doi,
-	p.volume,
-	p.issue,
 	p.[name-of-conference],
 	p.[parent-title],
 	FORMAT(p.[Reporting Date 1], 'MM/dd/yyyy') AS [Reporting Date 1],
@@ -47,6 +45,17 @@ SELECT DISTINCT
 	    THEN p.[journal]
 	    ELSE p.[Canonical Journal Title]
 	END AS [Journal Name],
+
+	-- If pub. volume/issue are null, use eScholarship volume/issue
+    CASE WHEN p.[volume] IS NULL
+	    THEN pr.[volume]
+	    ELSE p.[volume]
+	END AS [volume],
+
+    CASE WHEN p.[issue] IS NULL
+	    THEN pr.[issue]
+	    ELSE p.[issue]
+	END AS [issue],
 
 	-- Find LBL report numbers
 	CASE WHEN (UPPER(p.number) LIKE '%LBL%' OR UPPER(p.number) LIKE '%LBNL%')
@@ -213,6 +222,8 @@ GROUP BY
 	p.[journal],
 	p.volume,
 	p.issue,
+    pr.volume,
+	pr.issue,
 	p.[name-of-conference],
 	p.[parent-title],
 	p.[Reporting Date 1],
