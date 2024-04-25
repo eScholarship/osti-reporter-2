@@ -58,7 +58,6 @@ def main():
     # Add OSTI-specific metadata
     if args.elink_version == 1:
         new_osti_pubs = transform_pubs_v1.add_osti_data_v1(new_osti_pubs, args.test)
-
     elif args.elink_version == 2:
         new_osti_pubs = transform_pubs_v2.add_osti_data_v2(new_osti_pubs, args.test)
 
