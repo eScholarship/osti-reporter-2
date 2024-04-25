@@ -110,6 +110,7 @@ def get_lbl_report_number(pub):
 
 # -----------------
 # Returns fields based on publication type
+# TK TK -- Conference papers have new subtypes.
 def get_pub_type_fields(pub):
     pt = pub['Type']
     ptfields = {}
@@ -135,16 +136,19 @@ def get_pub_type_fields(pub):
 # Returns fields based on publication type
 def get_product_type(pub_type):
 
-    if pub_type == 'Journal article':
+    if pub_type == 'Journal article' or pub_type == 'Internet publication':
         return 'JA'
-        # Note: Many of these have matching codes in v2 (e.g. CO, OT, TR)
-        # case 'Monograph' | 'Chapter':
-        # See also monographic_title
-        #     return 'B'
-        # case 'Conference papers' | 'Report' | 'Poster' | 'Internet Publication' | 'Other':
-        #     return None
 
-    # If no matches, skip
+    elif pub_type == 'book' or pub_type == 'chapter':
+        return 'B'
+
+    elif pub_type == 'Conference papers' or pub_type == 'Poster':
+        return 'CO'
+
+    elif pub_type == 'Report':
+        return 'TR'
+
+    # If no matches, skip. (This shouldn't happen, though)
     return None
 
 

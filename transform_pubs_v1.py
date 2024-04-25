@@ -155,7 +155,7 @@ def get_product_type_fields(pub):
 
     match_pub_type = pub['Type'].lower()
 
-    if match_pub_type == 'journal article':
+    if match_pub_type == 'journal article' or match_pub_type == 'internet publication':
         # Journal, OA, and medium (electronic document)
         pt['product_type'] = 'JA'
         pt['journal_type'] = 'AM'
@@ -177,7 +177,7 @@ def get_product_type_fields(pub):
         if pub['issue'] is not None:
             pt['journal_issue'] = pub['issue']
 
-    elif match_pub_type == 'monograph' or match_pub_type == 'chapter':
+    elif match_pub_type == 'book' or match_pub_type == 'chapter':
         pt['product_type'] = 'B'
         pt['medium_code'] = 'ED'
         if pub['Type'].lower() == 'chapter' and pub['parent-title'] is not None:
@@ -192,8 +192,5 @@ def get_product_type_fields(pub):
     elif match_pub_type == 'report':
         pt['product_type'] = 'TR'
         pt['medium_code'] = 'ED'
-
-    else:
-        pt['product_type'] = 'UNKNOWN'
 
     return pt
