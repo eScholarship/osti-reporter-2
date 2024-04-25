@@ -172,28 +172,15 @@ FROM
 		OR os.[eschol_id] = pr.[Data Source Proprietary ID]
 
 WHERE
-	-- Only consider certain types of pubs. Note: shifting from deny-list to allow-list
-	-- p.[Type] NOT IN ('Other', 'Preprint', 'Presentation')
+    -- Only certain publication types
 	p.[Type] IN (
 	    'Book',
         'Chapter',
         'Conference papers',
-        'Journal article',
-        'Patent',
-        'Report',
-        'Software / Code',
-        'Performance',
-        'Composition',
-        'Design',
-        'Artefact',
-        'Exhibition',
         'Internet publication',
-        'Scholarly edition',
+        'Journal article',
         'Poster',
-        'Dataset',
-        'Figure',
-        'Fileset',
-        'Media'
+        'Report'
     )
 
 	-- Not already sent to OSTI
