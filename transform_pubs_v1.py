@@ -104,7 +104,7 @@ def dict_to_osti_xml(pub_dict):
     record.append(access_limitation)
 
     # Loop the dict, creating children as needed
-    pprint(pub_dict)
+    pprint('\n' + pub_dict)
     for key in pub_dict.keys():
         if key == 'grants':
             for grant in pub_dict[key]:
