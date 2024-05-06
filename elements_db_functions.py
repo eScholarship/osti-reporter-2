@@ -1,5 +1,4 @@
 import pyodbc
-import submission_comparison
 import write_logs
 
 
