@@ -20,6 +20,9 @@ def get_eschol_osti_db(mysql_creds):
     try:
         sql_file = open("sql_files/get_osti_db_from_eschol.sql")
         sql_query = sql_file.read()
+        sql_query = sql_query.replace("table_replace", mysql_creds['table'])
+        print(sql_query)
+
     except Exception as e:
         print("ERROR WHILE HANDLING SQL FILE. The file was unable to be located, \
                 or a problem occurred while reading its contents.")
@@ -57,21 +60,20 @@ def update_eschol_osti_db(new_osti_pubs, mysql_creds):
         print("ERROR WHILE CONNECTING TO MYSQL DATABASE.")
         raise e
 
-    # Build the SQl query -- MODIFICATIONS FOR UPDATES
+    # Build the SQl query -- MODIFICATIONS FOR UPDATES PHASE 3
     # insert_query = ("""INSERT INTO osti_eschol
     #     (date_stamp, eschol_ark, osti_id, doi, lbnl_report_no,
     #     pr_modified_when, prf_filename, prf_size, python_rewrite) VALUES \n""")
 
     # Build the SQl query -- FOR EXISTING PARITY
-    insert_query = ("""INSERT INTO osti_eschol 
+    insert_query = ("INSERT INTO " + mysql_creds["table"] + """
         (date_stamp, eschol_ark, osti_id, doi, lbnl_report_no) VALUES \n""")
 
     values_list = [
         ('(CURDATE(), "%s", %s, "%s", "%s")' % (
             pub['ark'], pub['osti_id'], pub['doi'], pub['LBL Report Number'])
          ).replace('"None"', 'Null')
-        for pub in successful_submissions
-    ]
+        for pub in successful_submissions]
 
     insert_query += (",\n".join(values_list)) + ";"
 
