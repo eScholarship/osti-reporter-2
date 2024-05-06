@@ -29,7 +29,8 @@ def submit_pubs(new_osti_pubs, osti_creds, submission_limit):
         osti_pub['response_xml_text'] = response.text
 
         if response.status_code >= 300:
-            print("Response status code > 300...")
+            print("Failure response code:", response.status_code)
+            print(response.text)
             osti_pub['response_success'] = False
 
         else:
