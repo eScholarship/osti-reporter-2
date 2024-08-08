@@ -67,11 +67,12 @@ def update_eschol_osti_db(new_osti_pubs, mysql_creds):
 
     # Build the SQl query -- FOR EXISTING PARITY
     insert_query = ("INSERT INTO " + mysql_creds["table"] + """
-        (date_stamp, eschol_ark, osti_id, doi, lbnl_report_no, elements_id, eschol_id) VALUES \n""")
+        (date_stamp, eschol_ark, osti_id, media_file_id, doi, lbnl_report_no, elements_id, eschol_id) VALUES \n""")
 
     values_list = [
-        ('(CURDATE(), "%s", %s, "%s", "%s", %s, "%s")' % (
-            pub['ark'], pub['osti_id'], pub['doi'], pub['LBL Report Number'], pub['id'], pub['eSchol ID'])
+        ('(CURDATE(), "%s", %s, %s, "%s", "%s", %s, "%s")' % (
+            pub['ark'], pub['osti_id'], pub['media_file_id'],
+            pub['doi'], pub['LBL Report Number'], pub['id'], pub['eSchol ID'])
          ).replace('"None"', 'Null')
         for pub in successful_submissions]
 

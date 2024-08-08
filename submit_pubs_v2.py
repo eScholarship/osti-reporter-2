@@ -1,6 +1,7 @@
 import requests
 from pprint import pprint
 
+
 def submit_pubs(new_osti_pubs, osti_creds, submission_limit):
 
     new_osti_pubs_with_responses = []
@@ -11,7 +12,7 @@ def submit_pubs(new_osti_pubs, osti_creds, submission_limit):
             print("Submission limit hit. Breaking submission loop.")
             break
 
-        print("Submitting:", i, ": Publication ID: ", osti_pub['id'])
+        print(f"\nSubmitting: {i}, Publication ID: {osti_pub['id']}")
 
         req_url = osti_creds['base_url'] + "/records/submit"
         headers = {'Authorization': 'Bearer ' + osti_creds['token']}
@@ -25,18 +26,24 @@ def submit_pubs(new_osti_pubs, osti_creds, submission_limit):
         osti_pub['response_json'] = response.json()
 
         if response.status_code >= 300:
-            print("Response status code > 300...\n")
+            print("Submission Failure:")
+            print(response.json())
             osti_pub['response_success'] = False
 
         else:
-            print("Submission OK.\n")
+            print("Submission OK.")
             osti_pub['response_success'] = True
             osti_pub['osti_id'] = osti_pub['response_json']['osti_id']
 
-            # If metadata submission was successful, proceed with the media submission (ie: pdf)
-            # media_response = submit_media(osti_creds, osti_pub)
-            # osti_pub['media_response_status_code'] = media_response.status_code
-            # osti_pub['media_response_json'] = media_response.json()
+            # If metadata submission was successful, submit the PDF
+            media_response = submit_media(osti_creds, osti_pub)
+            if media_response is False:
+                osti_pub['media_response_success'] = False
+                osti_pub['media_file_id'] = None
+            else:
+                osti_pub['media_response_success'] = True
+                osti_pub['media_response_json'] = media_response
+                osti_pub['media_file_id'] = media_response['files'][0]['media_file_id']
 
         new_osti_pubs_with_responses.append(osti_pub)
 
@@ -44,41 +51,27 @@ def submit_pubs(new_osti_pubs, osti_creds, submission_limit):
 
 
 def submit_media(osti_creds, osti_pub):
+    req_url = f"{osti_creds['base_url']}/media/{str(osti_pub['osti_id'])}"
 
-    media_submission_json = {
-        'id': osti_pub['osti_id'],
-        'title': osti_pub['title'],
-        'url': osti_pub['File URL']}
+    params = {'url': osti_pub['File URL'],
+              'title': osti_pub['title']}
 
-    print(f"File submission: {osti_pub['File URL']}")
-    params = {'url': osti_pub['File URL']}
-
-    file_response = requests.get(osti_pub['File URL'])
-    # with open(file_response.content, 'rb') as pdf_file:
-    #    pdf_file_data = pdf_file.read()
-
-    print("Debug time:::::")
-    # print(type(file_response.raw))
-    print(type(file_response.content))
-
-    pdf_file_data = file_response.content
-    pdf_file_data = ''.join(format(byte, '08b') for byte in pdf_file_data)
-    print(type(pdf_file_data))
-
-    req_url = osti_creds['base_url'] + "/media/" + str(osti_pub['osti_id'])
+    # NOTE! Don't include a Content-Type header for media.
     headers = {'Authorization': 'Bearer ' + osti_creds['token']}
-    media_response = requests.post(
-        req_url,
-        params=params,
-        data=pdf_file_data,
-        headers=headers)
 
-    print("Media response:")
-    pprint(media_response.status_code)
-    mrj = media_response.json()
-    pprint(mrj)
+    # Get the PDF file from url
+    pdf_response = requests.get(osti_pub['File URL'])
 
-    # stream = True
-    exit()
+    media_response = requests.post(req_url,
+                                   headers=headers,
+                                   params=params,
+                                   files={'file': pdf_response.content})
 
-    return media_response
+    if media_response.status_code > 300:
+        print(f"Media submission failure: {media_response.status_code}")
+        print(media_response.json())
+        return False
+
+    else:
+        print("Media submission OK.")
+        return media_response.json()
