@@ -1,14 +1,12 @@
 import csv
 import json
+import os
 
 
 def create_log_folder():
     from datetime import datetime
     log_folder = "logs/" + datetime.today().strftime('%Y-%m-%d-%H-%M-%S')
-
-    import os
     os.mkdir(log_folder)
-
     return log_folder
 
 
@@ -65,3 +63,8 @@ def output_responses(log_folder, new_osti_pubs, elink_version):
             response_json_string = json.dumps(response_json, indent=4)
             with open(log_folder + "/" + filename + ".json", "w") as out_file:
                 out_file.write(response_json_string)
+
+
+def output_json_generic(log_folder, data, elink_version, filename):
+    with open(f"{log_folder}/V{elink_version}-{filename}.json", "w") as out_file:
+        out_file.write(json.dumps(data, indent=4))

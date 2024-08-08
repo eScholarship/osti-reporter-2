@@ -81,6 +81,10 @@ def main():
     # Log OSTI API responses
     write_logs.output_responses(log_folder, new_osti_pubs, args.elink_version)
 
+    # TK testing work happening here
+    if args.elink_version == 2:
+        write_logs.output_json_generic(log_folder, new_osti_pubs, args.elink_version, "v2-responses")
+
     # Update eSchol OSTI DB with new successful submissions
     eschol_db_functions.update_eschol_osti_db(new_osti_pubs, creds['eschol_db_write'])
 
