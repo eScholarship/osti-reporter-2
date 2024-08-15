@@ -1,10 +1,10 @@
 import csv
 import json
 import os
+from datetime import datetime
 
 
 def create_log_folder():
-    from datetime import datetime
     log_folder = "logs/" + datetime.today().strftime('%Y-%m-%d-%H-%M-%S')
     os.mkdir(log_folder)
     return log_folder
@@ -66,5 +66,10 @@ def output_responses(log_folder, new_osti_pubs, elink_version):
 
 
 def output_json_generic(log_folder, data, elink_version, filename):
+    def serialize_datetime(obj):
+        if isinstance(obj, datetime):
+            return obj.isoformat()
+        raise TypeError("Type not serializable")
+
     with open(f"{log_folder}/V{elink_version}-{filename}.json", "w") as out_file:
-        out_file.write(json.dumps(data, indent=4))
+        out_file.write(json.dumps(data, indent=4, default=serialize_datetime))

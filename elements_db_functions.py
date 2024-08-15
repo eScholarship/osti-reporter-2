@@ -59,24 +59,33 @@ def create_submitted_temp_table(osti_eschol_db):
     print("Creating temp table with submitted OSTI data.")
 
     temp_table = '''
-BEGIN TRANSACTION 
-CREATE TABLE #osti_submitted
-(doi VARCHAR(80), eschol_id VARCHAR(80));
-COMMIT TRANSACTION
-GO
-'''
+        BEGIN TRANSACTION 
+        CREATE TABLE #osti_submitted (
+            doi VARCHAR(80),
+            eschol_id VARCHAR(80),
+            eschol_pr_modified_when TIMESTAMP,
+            prf_filename VARCHAR(80),
+            prf_size BIGINT
+        );
+        COMMIT TRANSACTION
+        GO
+        '''
 
     transaction_header = '''
-BEGIN TRANSACTION
-INSERT INTO #osti_submitted
-(doi, eschol_id)
-VALUES
-'''
+        BEGIN TRANSACTION
+        INSERT INTO #osti_submitted (
+            doi,
+            eschol_id,
+            eschol_pr_modified_when,
+            prf_filename,
+            prf_size)
+        VALUES
+        '''
 
     transaction_footer = '''
-COMMIT TRANSACTION
-GO
-'''
+        COMMIT TRANSACTION
+        GO
+        '''
 
     temp_table += transaction_header
     value_strings = []
@@ -84,11 +93,22 @@ GO
 
     for index, row in enumerate(osti_eschol_db, 1):
 
-        # Skip any null DOIs
-        if not row['doi']:
-            value_strings.append("(NULL, '" + row['eschol_id'] + "')")
-        else:
-            value_strings.append("('" + row['doi'] + "', '" + row['eschol_id'] + "')")
+        # Formatting for non-string data types
+        modified_when_formatted = row['eschol_pr_modified_when'].strftime('%Y-%m-%d %H:%M:%S') \
+            if row['eschol_pr_modified_when'] is not None else None
+        doi_formatted = row['doi'] \
+            if (row['doi'] is not None or row['doi'] != '') else "None"
+
+        # Build the insert string
+        value_strings.append(
+            ("('%s', '%s', '%s', '%s', %s)" % (
+                doi_formatted,
+                row['eschol_id'],
+                modified_when_formatted,
+                row['prf_filename'],
+                row['prf_size'])
+             ).replace("'None'", 'Null').replace(', None', ', Null')
+        )
 
         if index % insert_limit == 0:
             temp_table += ",\n".join(value_strings)

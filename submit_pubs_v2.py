@@ -37,13 +37,15 @@ def submit_pubs(new_osti_pubs, osti_creds, submission_limit):
 
             # If metadata submission was successful, submit the PDF
             media_response = submit_media(osti_creds, osti_pub)
-            if media_response is False:
+            osti_pub['media_response_code'] = media_response.status_code
+
+            if media_response.status_code > 300:
                 osti_pub['media_response_success'] = False
                 osti_pub['media_file_id'] = None
             else:
                 osti_pub['media_response_success'] = True
-                osti_pub['media_response_json'] = media_response
-                osti_pub['media_file_id'] = media_response['files'][0]['media_file_id']
+                osti_pub['media_response_json'] = media_response.json()
+                osti_pub['media_file_id'] = media_response.json()['files'][0]['media_file_id']
 
         new_osti_pubs_with_responses.append(osti_pub)
 
@@ -66,6 +68,7 @@ def submit_media(osti_creds, osti_pub):
                                    headers=headers,
                                    params=params,
                                    files={'file': pdf_response.content})
+    return media_response
 
     if media_response.status_code > 300:
         print(f"Media submission failure: {media_response.status_code}")

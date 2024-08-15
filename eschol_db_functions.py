@@ -60,19 +60,36 @@ def update_eschol_osti_db(new_osti_pubs, mysql_creds):
         print("ERROR WHILE CONNECTING TO MYSQL DATABASE.")
         raise e
 
-    # Build the SQl query -- MODIFICATIONS FOR UPDATES PHASE 3
-    # insert_query = ("""INSERT INTO osti_eschol
-    #     (date_stamp, eschol_ark, osti_id, doi, lbnl_report_no,
-    #     pr_modified_when, prf_filename, prf_size, python_rewrite) VALUES \n""")
-
     # Build the SQl query -- FOR EXISTING PARITY
     insert_query = ("INSERT INTO " + mysql_creds["table"] + """
-        (date_stamp, eschol_ark, osti_id, media_file_id, doi, lbnl_report_no, elements_id, eschol_id) VALUES \n""")
+        (date_stamp,
+        eschol_ark,
+        osti_id,
+        media_response_code,
+        media_file_id,
+        doi,
+        lbnl_report_no,
+        elements_id,
+        eschol_id,
+        eschol_pr_modified_when,
+        prf_filename,
+        prf_size
+        ) VALUES \n""")
 
     values_list = [
-        ('(CURDATE(), "%s", %s, %s, "%s", "%s", %s, "%s")' % (
-            pub['ark'], pub['osti_id'], pub['media_file_id'],
-            pub['doi'], pub['LBL Report Number'], pub['id'], pub['eSchol ID'])
+        ('(CURDATE(), "%s", %s, %s, %s, "%s", "%s", %s, "%s", "%s", "%s", %s)' % (
+            pub['ark'],
+            pub['osti_id'],
+            pub['media_response_code'],
+            pub['media_file_id'],
+            pub['doi'],
+            pub['LBL Report Number'],
+            pub['id'],
+            pub['eSchol ID'],
+            pub['eschol_pr_modified_when'].strftime('%Y-%m-%d %H:%M:%S'),
+            pub['Filename'],
+            pub['File Size']
+        )
          ).replace('"None"', 'Null')
         for pub in successful_submissions]
 

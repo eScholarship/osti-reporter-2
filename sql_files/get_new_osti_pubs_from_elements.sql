@@ -26,7 +26,8 @@ SELECT DISTINCT
 	FORMAT(pr.[online-publication-date], 'MM/dd/yyyy') AS [eschol Online Pub Date],
 	pr.[ID] AS [Pub Record ID],
 	pr.[abstract],
- 	max(pr.[Data Source Proprietary ID]) AS [eSchol ID],
+ 	pr.[Data Source Proprietary ID] AS [eSchol ID],
+ 	pr.[Modified When] as [eschol_pr_modified_when],
  	pr.[public-url] AS [eSchol URL],
  	CONCAT('ark:/13030/', max(pr.[Data Source Proprietary ID])) AS [ark],
 	prf.[Filename],
@@ -153,9 +154,27 @@ FROM
  		AND u.[Primary Group Descriptor] LIKE '%lbl%'
 
 	-- Has an eScholarship pub record...
-	JOIN [Publication Record] pr
-		ON p.ID = pr.[Publication ID]
-		AND pr.[Data Source] = 'escholarship'
+    -- If the pub has multiple eSchol pub records, select only the most recent.
+        JOIN (SELECT
+            inner_pr.id,
+            inner_pr.[Data Source Proprietary ID],
+            inner_pr.[Publication ID],
+            inner_pr.[doi],
+            inner_pr.[volume],
+            inner_pr.[issue],
+            inner_pr.[abstract],
+            inner_pr.[publication-date],
+            inner_pr.[online-publication-date],
+            inner_pr.[public-url],
+            inner_pr.[Modified When],
+            ROW_NUMBER() OVER (
+                partition BY inner_pr.[Publication ID]
+                ORDER BY inner_pr.id desc) as pr_id_rank
+            FROM [Publication Record] inner_pr
+            WHERE inner_pr.[Data Source] = 'escholarship'
+        ) pr
+        on p.id = pr.[Publication ID]
+        and pr.pr_id_rank = 1
 
 	-- ...with a file attached.
 	-- Note: Cut for "supp" ensures only one prf per publication record.
@@ -216,6 +235,7 @@ GROUP BY
 	p.[Reporting Date 1],
 	pr.[publication-date],
 	pr.[online-publication-date],
+	pr.[Modified When],
  	p.[number],
 	pr.[ID],
 	pr.[Data Source Proprietary ID],
