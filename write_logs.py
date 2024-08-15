@@ -4,6 +4,13 @@ import os
 from datetime import datetime
 
 
+# Helper function for outputting datetime in JSON
+def serialize_datetime(obj):
+    if isinstance(obj, datetime):
+        return obj.isoformat()
+    raise TypeError("Type not serializable")
+
+
 def create_log_folder():
     log_folder = "logs/" + datetime.today().strftime('%Y-%m-%d-%H-%M-%S')
     os.mkdir(log_folder)
@@ -20,6 +27,7 @@ def output_temp_table_results(log_folder, rows):
         csv_writer = csv.writer(outfile)
         csv_writer.writerow(rows[0].keys())
         for row in rows:
+            row = {k: v.isoformat() if isinstance(v, datetime) else v for k, v in row.items()}
             csv_writer.writerow(row.values())
 
 
@@ -66,10 +74,6 @@ def output_responses(log_folder, new_osti_pubs, elink_version):
 
 
 def output_json_generic(log_folder, data, elink_version, filename):
-    def serialize_datetime(obj):
-        if isinstance(obj, datetime):
-            return obj.isoformat()
-        raise TypeError("Type not serializable")
 
     with open(f"{log_folder}/V{elink_version}-{filename}.json", "w") as out_file:
         out_file.write(json.dumps(data, indent=4, default=serialize_datetime))

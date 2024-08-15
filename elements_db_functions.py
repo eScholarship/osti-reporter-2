@@ -2,21 +2,7 @@ import pyodbc
 import write_logs
 
 
-# --------------------------
-# Query the Elements DB, find pubs which need to be sent.
-def get_new_osti_pubs(sql_creds, temp_table_query, args, log_folder):
-
-    # Load SQL file
-    try:
-        # sql_file = open("sql_files/get_new_osti_pubs_with_json.sql")
-        sql_file = open("sql_files/get_new_osti_pubs_from_elements.sql")
-        sql_query = sql_file.read()
-
-    except Exception as e:
-        print("ERROR WHILE HANDLING SQL FILE. The file was unable to be located, \
-                or a problem occurred while reading its contents.")
-        raise e
-
+def get_elements_connection(sql_creds):
     # Connect to db
     try:
         conn = pyodbc.connect(
@@ -33,6 +19,25 @@ def get_new_osti_pubs(sql_creds, temp_table_query, args, log_folder):
 
     print("Connected to Elements reporting DB.")
     conn.autocommit = True  # Required when queries use TRANSACTION
+
+    return conn
+
+
+# --------------------------
+# Query the Elements DB, find pubs which need to be sent.
+def get_new_osti_pubs(conn, temp_table_query, args, log_folder):
+
+    # Load SQL file
+    try:
+        # sql_file = open("sql_files/get_new_osti_pubs_with_json.sql")
+        sql_file = open("sql_files/get_new_osti_pubs_from_elements.sql")
+        sql_query = sql_file.read()
+
+    except Exception as e:
+        print("ERROR WHILE HANDLING SQL FILE. The file was unable to be located, \
+                or a problem occurred while reading its contents.")
+        raise e
+
     cursor = conn.cursor()
 
     # Execute the temp table query in Elements
@@ -61,9 +66,11 @@ def create_submitted_temp_table(osti_eschol_db):
     temp_table = '''
         BEGIN TRANSACTION 
         CREATE TABLE #osti_submitted (
+            osti_id INT,
+            elements_id INT,
             doi VARCHAR(80),
             eschol_id VARCHAR(80),
-            eschol_pr_modified_when TIMESTAMP,
+            eschol_pr_modified_when DATETIME,
             prf_filename VARCHAR(80),
             prf_size BIGINT
         );
@@ -74,6 +81,8 @@ def create_submitted_temp_table(osti_eschol_db):
     transaction_header = '''
         BEGIN TRANSACTION
         INSERT INTO #osti_submitted (
+            osti_id,
+            elements_id,
             doi,
             eschol_id,
             eschol_pr_modified_when,
@@ -101,7 +110,9 @@ def create_submitted_temp_table(osti_eschol_db):
 
         # Build the insert string
         value_strings.append(
-            ("('%s', '%s', '%s', '%s', %s)" % (
+            ("(%s, %s, '%s', '%s', '%s', '%s', %s)" % (
+                row['osti_id'],
+                row['elements_id'],
                 doi_formatted,
                 row['eschol_id'],
                 modified_when_formatted,

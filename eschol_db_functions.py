@@ -2,8 +2,7 @@
 import pymysql
 
 
-# ------------------------------
-def get_eschol_osti_db(mysql_creds):
+def get_eschol_connection(mysql_creds):
     # connect to the mySql db
     try:
         mysql_conn = pymysql.connect(
@@ -12,11 +11,30 @@ def get_eschol_osti_db(mysql_creds):
             password=mysql_creds['password'],
             database=mysql_creds['database'],
             cursorclass=pymysql.cursors.DictCursor)
+
+        return mysql_conn
     except Exception as e:
         print("ERROR WHILE CONNECTING TO MYSQL DATABASE.")
         raise e
 
-    # Load SQL file
+
+# ------------------------------
+def get_eschol_osti_db(mysql_creds):
+
+    # Get the connection
+    try:
+        mysql_conn = pymysql.connect(
+            host=mysql_creds['host'],
+            user=mysql_creds['user'],
+            password=mysql_creds['password'],
+            database=mysql_creds['database'],
+            cursorclass=pymysql.cursors.DictCursor)
+
+    except Exception as e:
+        print("ERROR WHILE CONNECTING TO MYSQL DATABASE.")
+        raise e
+
+    # Load .sql file
     try:
         sql_file = open("sql_files/get_osti_db_from_eschol.sql")
         sql_query = sql_file.read()
@@ -33,8 +51,6 @@ def get_eschol_osti_db(mysql_creds):
         print("Connected to eSchol MySQL DB. Getting osti_eschol db.")
         cursor.execute(sql_query)
         eschol_osti_db = cursor.fetchall()
-
-    mysql_conn.close()
 
     return eschol_osti_db
 

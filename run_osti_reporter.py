@@ -35,6 +35,10 @@ def main():
     # Creates the log folder
     log_folder = write_logs.create_log_folder()
 
+    # Gets the db connections for eSchol and Elements
+    # eschol_db_conn = eschol_db_functions.get_eschol_connection(creds['eschol_db_read'])
+    elements_db_conn = elements_db_functions.get_elements_connection(creds['elements_reporting_db'])
+
     # Get the data from the eschol_osti db
     osti_eschol_db_pubs = eschol_db_functions.get_eschol_osti_db(creds['eschol_db_read'])
 
@@ -46,7 +50,7 @@ def main():
 
     # Get the publications which need to be sent, exit if there's none.
     new_osti_pubs = elements_db_functions.get_new_osti_pubs(
-        creds['elements_reporting_db'], osti_eschol_temp_table_query, args, log_folder)
+        elements_db_conn, osti_eschol_temp_table_query, args, log_folder)
 
     if not new_osti_pubs:
         print("No new OSTI publications were found. Exiting.")
@@ -87,6 +91,9 @@ def main():
 
     # Update eSchol OSTI DB with new successful submissions
     eschol_db_functions.update_eschol_osti_db(new_osti_pubs, creds['eschol_db_write'])
+
+    # Close elements db connections
+    elements_db_conn.close()
 
     # Close SSH tunnel if needed
     if ssh_server:
