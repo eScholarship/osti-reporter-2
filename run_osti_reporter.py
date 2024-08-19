@@ -48,49 +48,75 @@ def main():
     # Log temp table query
     write_logs.output_temp_table_query(log_folder, osti_eschol_temp_table_query)
 
-    # Get the publications which need to be sent, exit if there's none.
-    new_osti_pubs = elements_db_functions.get_new_osti_pubs(
-        elements_db_conn, osti_eschol_temp_table_query, args, log_folder)
+    if not args.test_updates:
+        # Get the publications which need to be sent, exit if there's none.
+        new_osti_pubs = elements_db_functions.get_new_osti_pubs(
+            elements_db_conn, osti_eschol_temp_table_query, args, log_folder)
 
-    if not new_osti_pubs:
-        print("No new OSTI publications were found. Exiting.")
-        exit(0)
+        if not new_osti_pubs:
+            print("No new OSTI publications were found. Exiting.")
+            elements_db_conn.close()
+            exit(0)
 
-    # Log Elements query results
-    write_logs.output_elements_query_results(log_folder, new_osti_pubs)
+        # Log Elements query results
+        write_logs.output_elements_query_results(log_folder, new_osti_pubs)
 
-    # Add OSTI-specific metadata
-    if args.elink_version == 1:
-        new_osti_pubs = transform_pubs_v1.add_osti_data_v1(new_osti_pubs, args.test)
-    elif args.elink_version == 2:
-        new_osti_pubs = transform_pubs_v2.add_osti_data_v2(new_osti_pubs, args.test)
+        # Add OSTI-specific metadata
+        if args.elink_version == 1:
+            new_osti_pubs = transform_pubs_v1.add_osti_data_v1(new_osti_pubs, args.test)
 
-    # Log submission files
-    write_logs.output_submissions(log_folder, new_osti_pubs, args.elink_version)
+        elif args.elink_version == 2:
+            new_osti_pubs = transform_pubs_v2.add_osti_data_v2(new_osti_pubs, args.test)
 
-    # If running in test mode, skip the submission step.
-    if args.test:
-        print("\n", len(new_osti_pubs), "new publications -- Test output only. Exiting.")
-        exit(0)
+        # Log submission files
+        print(f"\n{len(new_osti_pubs)} new pubs for submission.")
+        write_logs.output_submissions(log_folder, new_osti_pubs, args.elink_version)
 
-    # Otherwise, send the xml (v1) or json (v2) submissions to the OSTI API.
-    print("\n", len(new_osti_pubs), "new publications for submission.")
+        # If running in test mode, skip the submission step.
+        if args.test:
+            print("Run with test output only. Exiting.")
+            elements_db_conn.close()
+            exit(0)
 
-    if args.elink_version == 1:
-        new_osti_pubs = submit_pubs_v1.submit_pubs(new_osti_pubs, creds['osti_api'], submission_limit)
+        # Otherwise, send the xml (v1) or json (v2) submissions to the OSTI API.
+        if args.elink_version == 1:
+            new_osti_pubs = submit_pubs_v1.submit_pubs(new_osti_pubs, creds['osti_api'], submission_limit)
+        elif args.elink_version == 2:
+            new_osti_pubs = submit_pubs_v2.submit_pubs(new_osti_pubs, creds['osti_api'], submission_limit)
 
-    elif args.elink_version == 2:
-        new_osti_pubs = submit_pubs_v2.submit_pubs(new_osti_pubs, creds['osti_api'], submission_limit)
+        # Log OSTI API responses
+        write_logs.output_responses(log_folder, new_osti_pubs, args.elink_version)
 
-    # Log OSTI API responses
-    write_logs.output_responses(log_folder, new_osti_pubs, args.elink_version)
+        # Output pub objects with responses
+        if args.elink_version == 2:
+            write_logs.output_json_generic(log_folder, new_osti_pubs, args.elink_version, "v2-responses")
 
-    # TK testing work happening here
-    if args.elink_version == 2:
-        write_logs.output_json_generic(log_folder, new_osti_pubs, args.elink_version, "v2-responses")
+        # Update eSchol OSTI DB with new successful submissions
+        eschol_db_functions.update_eschol_osti_db(new_osti_pubs, creds['eschol_db_write'])
 
-    # Update eSchol OSTI DB with new successful submissions
-    eschol_db_functions.update_eschol_osti_db(new_osti_pubs, creds['eschol_db_write'])
+    # ---------- METADATA & PDF UPDATES
+    if args.elink_version == 2 and args.send_updates:
+        # Get any OSTI pubs with updated metadata
+        osti_metadata_updates = elements_db_functions.get_osti_metadata_updates(elements_db_conn, args)
+
+        if not osti_metadata_updates:
+            print("No OSTI pubs with modified metadata. Moving on.")
+
+        else:
+            # Otherwise, send the updated jsons to the OSTI API.
+            print("\n", len(osti_metadata_updates), "Modified publications for updating.")
+
+            # Transform metadata updates for submission
+            osti_metadata_updates = transform_pubs_v2.add_osti_data_v2(new_osti_pubs, args.test)
+
+            # Log metadata updates
+            write_logs.output_submissions(log_folder, osti_metadata_updates, args.elink_version, "UPDATE-METADATA")
+
+
+
+
+
+    # TK PDF update here
 
     # Close elements db connections
     elements_db_conn.close()

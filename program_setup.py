@@ -52,6 +52,12 @@ def process_args():
                         default=False,
                         help="Outputs update XML or JSON to disk rather than sending to OSTI API.")
 
+    parser.add_argument("-xu", "--test-updates",
+                        dest="test_updates",
+                        action="store_true",
+                        default=False,
+                        help="Skips ordinary submission step and jumps to update steps.")
+
     return parser.parse_args()
 
 

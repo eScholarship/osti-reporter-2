@@ -39,7 +39,7 @@ def output_elements_query_results(log_folder, new_osti_pubs):
             csv_writer.writerow(row.values())
 
 
-def output_submissions(log_folder, new_osti_pubs, elink_version):
+def output_submissions(log_folder, new_osti_pubs, elink_version, submission_type="NEW"):
 
     if elink_version == 1:
         for index, osti_pub in enumerate(new_osti_pubs):
@@ -49,7 +49,7 @@ def output_submissions(log_folder, new_osti_pubs, elink_version):
 
     elif elink_version == 2:
         for index, osti_pub in enumerate(new_osti_pubs):
-            filename = "V2-" + str(index) + "-SUBMISSION"
+            filename = f"V2-{submission_type}-{str(index)}-SUBMISSION"
             osti_pub_json_string = json.dumps(osti_pub['submission_json'], indent=4)
             with open(log_folder + "/" + filename + ".json", "w") as out_file:
                 out_file.write(osti_pub_json_string)

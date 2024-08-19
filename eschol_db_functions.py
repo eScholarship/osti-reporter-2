@@ -76,7 +76,7 @@ def update_eschol_osti_db(new_osti_pubs, mysql_creds):
         print("ERROR WHILE CONNECTING TO MYSQL DATABASE.")
         raise e
 
-    # Build the SQl query -- FOR EXISTING PARITY
+    # Build the SQl query
     insert_query = ("INSERT INTO " + mysql_creds["table"] + """
         (date_stamp,
         eschol_ark,
@@ -102,7 +102,7 @@ def update_eschol_osti_db(new_osti_pubs, mysql_creds):
             pub['LBL Report Number'],
             pub['id'],
             pub['eSchol ID'],
-            pub['eschol_pr_modified_when'].strftime('%Y-%m-%d %H:%M:%S'),
+            pub['eschol_pr_modified_when'].strftime('%Y-%m-%d %H:%M:%S.%f'),
             pub['Filename'],
             pub['File Size']
         )

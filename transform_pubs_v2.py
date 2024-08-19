@@ -47,12 +47,10 @@ def add_osti_data_v2(new_osti_pubs, testing_mode):
         osti_pub['product_size'] = pub['File Size']
 
         # Identifiers
-        # Note: OSTI says ARKS should go in OTHER_ID
-        osti_pub['identifiers'].append(
-            dict(type='OTHER_ID', value=pub['ark'], title='ARK'))
-        osti_pub['identifiers'].append(
-            dict(type='OTHER_ID', value=pub['eSchol URL'], title='eScholarship URL'))
+        osti_pub['identifiers'].append(dict(type='OTHER_ID', value=pub['ark']))
+        osti_pub['identifiers'].append(dict(type='OTHER_ID', value=pub['eSchol URL']))
 
+        # TK New product type additional data req's -- conference, etc.
         osti_pub['product_type'] = get_product_type(pub['Type'])
         if get_lbl_report_number(pub) is not None:  # Think something's wrong here
             osti_pub['identifiers'].append(dict(type='RN', value=get_lbl_report_number(pub)))
@@ -82,9 +80,7 @@ def add_osti_data_v2(new_osti_pubs, testing_mode):
         if grants_json is not None:
             osti_pub['organizations'] += grants_json
 
-        # JSON is serialized into string for testing output
-        # if testing_mode:
-        #     osti_pub = json.dumps(osti_pub, indent=4)
+        # Save JSON to pub dict
         pub['submission_json'] = osti_pub
 
         # Add to the list

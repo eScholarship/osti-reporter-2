@@ -102,9 +102,12 @@ def create_submitted_temp_table(osti_eschol_db):
 
     for index, row in enumerate(osti_eschol_db, 1):
 
-        # Formatting for non-string data types
-        modified_when_formatted = row['eschol_pr_modified_when'].strftime('%Y-%m-%d %H:%M:%S') \
+        # MSSQL only accepts datetime/timestamp with 3 digits of fractional time
+        modified_when_formatted = row['eschol_pr_modified_when'].strftime('%Y-%m-%d %H:%M:%S.%f') \
             if row['eschol_pr_modified_when'] is not None else None
+        if modified_when_formatted is not None:
+            modified_when_formatted = modified_when_formatted[:-3]
+
         doi_formatted = row['doi'] \
             if (row['doi'] is not None or row['doi'] != '') else "None"
 
@@ -162,3 +165,33 @@ def replace_url_variable_values(input_qa, sql_query):
             'https://escholarship.org/content/')
 
     return sql_query
+
+
+# --------------------------
+# Get OSTI-submitted items who've had metadata updates.
+def get_osti_metadata_updates(conn, args):
+
+    # Load SQL file
+    try:
+        # sql_file = open("sql_files/get_new_osti_pubs_with_json.sql")
+        sql_file = open("sql_files/get_updated_metadata_from_elements.sql")
+        sql_query = sql_file.read()
+
+    except Exception as e:
+        print("ERROR WHILE HANDLING SQL FILE. The file was unable to be located, \
+                or a problem occurred while reading its contents.")
+        raise e
+
+    cursor = conn.cursor()
+
+    # Elements query: Replace variable definitions with appropriate URLS
+    sql_query = replace_url_variable_values(args.input_qa, sql_query)
+
+    print("Executing query to retrieve new OSTI pubs.")
+    cursor.execute(sql_query)
+
+    # pyodbc doesn't return dicts automatically, we have to make them ourselves
+    columns = [column[0] for column in cursor.description]
+    rows = [dict(zip(columns, row)) for row in cursor.fetchall()]
+
+    return rows
