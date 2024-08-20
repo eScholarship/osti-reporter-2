@@ -24,8 +24,20 @@ def get_elements_connection(sql_creds):
 
 
 # --------------------------
+# Make the temp table in elements
+def create_temp_table_in_elements(conn, temp_table_query, log_folder):
+    cursor = conn.cursor()
+
+    # Execute the temp table query in Elements
+    cursor.execute(temp_table_query)
+
+    # Log the Elements temp table output.
+    write_logs.output_temp_table_results(log_folder, get_full_temp_table(cursor))
+
+
+# --------------------------
 # Query the Elements DB, find pubs which need to be sent.
-def get_new_osti_pubs(conn, temp_table_query, args, log_folder):
+def get_new_osti_pubs(conn, args):
 
     # Load SQL file
     try:
@@ -39,12 +51,6 @@ def get_new_osti_pubs(conn, temp_table_query, args, log_folder):
         raise e
 
     cursor = conn.cursor()
-
-    # Execute the temp table query in Elements
-    cursor.execute(temp_table_query)
-
-    # Log the Elements temp table output.
-    write_logs.output_temp_table_results(log_folder, get_full_temp_table(cursor))
 
     # Elements query: Replace variable definitions with appropriate URLS
     sql_query = replace_url_variable_values(args.input_qa, sql_query)
@@ -60,7 +66,7 @@ def get_new_osti_pubs(conn, temp_table_query, args, log_folder):
 
 
 # --------------------------
-def create_submitted_temp_table(osti_eschol_db):
+def generate_temp_table_sql(osti_eschol_db):
     print("Creating temp table with submitted OSTI data.")
 
     temp_table = '''
@@ -173,7 +179,6 @@ def get_osti_metadata_updates(conn, args):
 
     # Load SQL file
     try:
-        # sql_file = open("sql_files/get_new_osti_pubs_with_json.sql")
         sql_file = open("sql_files/get_updated_metadata_from_elements.sql")
         sql_query = sql_file.read()
 
@@ -187,7 +192,36 @@ def get_osti_metadata_updates(conn, args):
     # Elements query: Replace variable definitions with appropriate URLS
     sql_query = replace_url_variable_values(args.input_qa, sql_query)
 
-    print("Executing query to retrieve new OSTI pubs.")
+    print("Executing query to retrieve updated OSTI pub metadata.")
+    cursor.execute(sql_query)
+
+    # pyodbc doesn't return dicts automatically, we have to make them ourselves
+    columns = [column[0] for column in cursor.description]
+    rows = [dict(zip(columns, row)) for row in cursor.fetchall()]
+
+    return rows
+
+
+# --------------------------
+# Get OSTI-submitted items whose PDFs have been re-deposited
+def get_osti_media_updates(conn, args):
+
+    # Load SQL file
+    try:
+        sql_file = open("sql_files/get_updated_pdfs_from_elements.sql")
+        sql_query = sql_file.read()
+
+    except Exception as e:
+        print("ERROR WHILE HANDLING SQL FILE. The file was unable to be located, \
+                or a problem occurred while reading its contents.")
+        raise e
+
+    cursor = conn.cursor()
+
+    # Elements query: Replace variable definitions with appropriate URLS
+    sql_query = replace_url_variable_values(args.input_qa, sql_query)
+
+    print("Executing query to retrieve updated OSTI pub PDFs.")
     cursor.execute(sql_query)
 
     # pyodbc doesn't return dicts automatically, we have to make them ourselves

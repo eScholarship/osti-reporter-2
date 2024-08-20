@@ -56,13 +56,7 @@ def get_eschol_osti_db(mysql_creds):
 
 
 # ------------------------------
-def update_eschol_osti_db(new_osti_pubs, mysql_creds):
-    # Add only successfully-submitted pubs to the db.
-    successful_submissions = [pub for pub in new_osti_pubs if pub['response_success'] is True]
-
-    if len(successful_submissions) == 0:
-        print("No successful submissions in this set of publications. Exiting program.")
-        exit(0)
+def update_eschol_osti_db(successful_submissions, mysql_creds):
 
     # connect to the mySql db
     try:
@@ -106,7 +100,7 @@ def update_eschol_osti_db(new_osti_pubs, mysql_creds):
             pub['Filename'],
             pub['File Size']
         )
-         ).replace('"None"', 'Null')
+         ).replace('"None"', 'Null').replace(', None', ', Null')
         for pub in successful_submissions]
 
     insert_query += (",\n".join(values_list)) + ";"
@@ -119,3 +113,8 @@ def update_eschol_osti_db(new_osti_pubs, mysql_creds):
         mysql_conn.commit()
 
     mysql_conn.close()
+
+
+# ------------------------------
+def update_eschol_osti_db_updated_metadata(successful_submissions, mysql_creds):
+    pass

@@ -62,14 +62,58 @@ def process_args():
 
 
 def assign_creds(args):
-    import creds
+    import os
+    from dotenv import load_dotenv
+    load_dotenv()
+
     selected_creds = {}
+
+    # Elements reporting db MSSQL
+    if args.input_qa:
+        selected_creds['elements_reporting_db'] = {
+            'user': os.environ['ELEMENTS_REPORTING_DB_QA_USER'],
+            'password': os.environ['ELEMENTS_REPORTING_DB_QA_PASSWORD'],
+            'server': os.environ['ELEMENTS_REPORTING_DB_QA_SERVER'],
+            'port': os.environ['ELEMENTS_REPORTING_DB_QA_PORT'],
+            'database': os.environ['ELEMENTS_REPORTING_DB_QA_DATABASE'],
+            'driver': os.environ['ELEMENTS_REPORTING_DB_QA_DRIVER']
+        }
+
+    else:
+        selected_creds['elements_reporting_db'] = {
+            'user': os.environ['ELEMENTS_REPORTING_DB_PROD_USER'],
+            'password': os.environ['ELEMENTS_REPORTING_DB_PROD_PASSWORD'],
+            'server': os.environ['ELEMENTS_REPORTING_DB_PROD_SERVER'],
+            'port': os.environ['ELEMENTS_REPORTING_DB_PROD_PORT'],
+            'database': os.environ['ELEMENTS_REPORTING_DB_PROD_DATABASE'],
+            'driver': os.environ['ELEMENTS_REPORTING_DB_PROD_DRIVER']
+        }
+
+    import creds
 
     # SSH tunnel
     if args.input_qa:
-        selected_creds['ssh'] = creds.ssh_creds_qa
+        selected_creds['ssh'] = {
+            'host': os.environ['SSH_QA_HOST'],
+            'username': os.environ['SSH_QA_USERNAME'],
+            'password': os.environ['SSH_QA_PASSWORD'],
+            'remote': (os.environ['SSH_QA_REMOTE_URL'],
+                       os.environ['SSH_QA_REMOTE_PORT']),
+            'local': (os.environ['SSH_QA_LOCAL_URL'],
+                      os.environ['SSH_QA_LOCAL_PORT'])
+        }
+
     else:
-        selected_creds['ssh'] = creds.ssh_creds_prod
+        selected_creds['ssh'] = {
+            'host': os.environ['SSH_PROD_HOST'],
+            'username': os.environ['SSH_PROD_USERNAME'],
+            'password': os.environ['SSH_PROD_PASSWORD'],
+            'key_location': os.environ['SSH_PROD_KEY_LOCATION'],
+            'remote': (os.environ['SSH_PROD_REMOTE_URL'],
+                       os.environ['SSH_PROD_REMOTE_PORT']),
+            'local': (os.environ['SSH_PROD_LOCAL_URL'],
+                      os.environ['SSH_PROD_LOCAL_PORT'])
+        }
 
     # Elements reporting db MSSQL
     if args.input_qa:
@@ -85,15 +129,41 @@ def assign_creds(args):
 
     # eSchol MySQL for input (read)
     if args.input_qa:
-        selected_creds['eschol_db_read'] = creds.eschol_osti_db_qa
+        selected_creds['eschol_db_read'] = {
+            'host': os.environ['ESCHOL_OSTI_DB_QA_HOST'],
+            'database': os.environ['ESCHOL_OSTI_DB_QA_DATABASE'],
+            'user': os.environ['ESCHOL_OSTI_DB_QA_USER'],
+            'password': os.environ['ESCHOL_OSTI_DB_QA_PASSWORD'],
+            'table': os.environ['ESCHOL_OSTI_DB_QA_TABLE']
+        }
+
     else:
-        selected_creds['eschol_db_read'] = creds.eschol_osti_db_prod
+        selected_creds['eschol_db_read'] = {
+            'host': os.environ['ESCHOL_OSTI_DB_PROD_HOST'],
+            'database': os.environ['ESCHOL_OSTI_DB_PROD_DATABASE'],
+            'user': os.environ['ESCHOL_OSTI_DB_PROD_USER'],
+            'password': os.environ['ESCHOL_OSTI_DB_PROD_PASSWORD'],
+            'table': os.environ['ESCHOL_OSTI_DB_PROD_TABLE']
+        }
 
     # eSchol MySQL for output (write)
     if args.output_qa:
-        selected_creds['eschol_db_write'] = creds.eschol_osti_db_qa
+        selected_creds['eschol_db_write'] = {
+            'host': os.environ['ESCHOL_OSTI_DB_QA_HOST'],
+            'database': os.environ['ESCHOL_OSTI_DB_QA_DATABASE'],
+            'user': os.environ['ESCHOL_OSTI_DB_QA_USER'],
+            'password': os.environ['ESCHOL_OSTI_DB_QA_PASSWORD'],
+            'table': os.environ['ESCHOL_OSTI_DB_QA_TABLE']
+        }
+
     else:
-        selected_creds['eschol_db_write'] = creds.eschol_osti_db_prod
+        selected_creds['eschol_db_write'] = {
+            'host': os.environ['ESCHOL_OSTI_DB_PROD_HOST'],
+            'database': os.environ['ESCHOL_OSTI_DB_PROD_DATABASE'],
+            'user': os.environ['ESCHOL_OSTI_DB_PROD_USER'],
+            'password': os.environ['ESCHOL_OSTI_DB_PROD_PASSWORD'],
+            'table': os.environ['ESCHOL_OSTI_DB_PROD_TABLE']
+        }
 
     # OSTI Elink
     if args.elink_version == 1:
