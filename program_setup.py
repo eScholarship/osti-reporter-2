@@ -116,16 +116,16 @@ def assign_creds(args):
         }
 
     # Elements reporting db MSSQL
-    if args.input_qa:
-        if args.tunnel_needed:
-            selected_creds['elements_reporting_db'] = creds.elements_reporting_db_local_qa
-        else:
-            selected_creds['elements_reporting_db'] = creds.elements_reporting_db_server_qa
-    else:
-        if args.tunnel_needed:
-            selected_creds['elements_reporting_db'] = creds.elements_reporting_db_local_prod
-        else:
-            selected_creds['elements_reporting_db'] = creds.elements_reporting_db_server_prod
+    # if args.input_qa:
+    #     if args.tunnel_needed:
+    #         selected_creds['elements_reporting_db'] = creds.elements_reporting_db_local_qa
+    #     else:
+    #         selected_creds['elements_reporting_db'] = creds.elements_reporting_db_server_qa
+    # else:
+    #     if args.tunnel_needed:
+    #         selected_creds['elements_reporting_db'] = creds.elements_reporting_db_local_prod
+    #     else:
+    #         selected_creds['elements_reporting_db'] = creds.elements_reporting_db_server_prod
 
     # eSchol MySQL for input (read)
     if args.input_qa:
@@ -168,14 +168,28 @@ def assign_creds(args):
     # OSTI Elink
     if args.elink_version == 1:
         if args.elink_qa:
-            selected_creds['osti_api'] = creds.osti_v1_qa
+            selected_creds['osti_api'] = {
+                "base_url": os.environ['OSTI_V1_QA_URL'],
+                "username": os.environ['OSTI_V1_QA_USERNAME'],
+                "password": os.environ['OSTI_V1_QA_PASSWORD']
+            }
         else:
-            selected_creds['osti_api'] = creds.osti_v1_prod
+            selected_creds['osti_api'] = {
+                "base_url": os.environ['OSTI_V1_PROD_URL'],
+                "username": os.environ['OSTI_V1_PROD_USERNAME'],
+                "password": os.environ['OSTI_V1_PROD_PASSWORD']
+            }
     else:
         if args.elink_qa:
-            selected_creds['osti_api'] = creds.osti_v2_qa
+            selected_creds['osti_api'] = {
+                "base_url": os.environ['OSTI_V2_QA_URL'],
+                "token": os.environ['OSTI_V2_QA_TOKEN']
+            }
         else:
-            selected_creds['osti_api'] = creds.osti_v2_prod
+            selected_creds['osti_api'] = {
+                "base_url": os.environ['OSTI_V2_PROD_URL'],
+                "token": os.environ['OSTI_V2_PROD_TOKEN']
+            }
 
     return selected_creds
 
@@ -192,8 +206,6 @@ def get_ssh_server(args, ssh_creds):
             server = SSHTunnelForwarder(
                 ssh_creds['host'],
                 ssh_username=ssh_creds['username'],
-                # ssh_pkey=(os.path.expanduser("~") + "/.ssh/id_rsa"),
-                # allow_agent automatically locates the appropriate ssh key
                 allow_agent=True,
                 remote_bind_address=ssh_creds['remote'],
                 local_bind_address=ssh_creds['local'])

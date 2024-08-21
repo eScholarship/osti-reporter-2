@@ -77,3 +77,26 @@ def output_json_generic(log_folder, data, elink_version, filename):
 
     with open(f"{log_folder}/V{elink_version}-{filename}.json", "w") as out_file:
         out_file.write(json.dumps(data, indent=4, default=serialize_datetime))
+
+
+def console_final_report(new_submissions, metadata_updates, pdf_updates):
+    pass
+
+    # TK TK pick up here
+    print('\n\n\n----------------')
+    print('FINAL REPORT:\n')
+
+    if not new_submissions:
+        print("New submissions: None.")
+    else:
+        print(f"New submissions: {len(new_submissions)}")
+        success_pubs = [pub for pub in new_submissions if pub['response_success'] is True]
+        fail_pubs = [pub for pub in new_submissions if pub['response_success'] is False]
+        print(f"Success: {len(success_pubs)}")
+        print(f"Failure: {len(fail_pubs)}")
+        print("Failures itemized:")
+
+        for pub in fail_pubs:
+            pass
+
+    pass

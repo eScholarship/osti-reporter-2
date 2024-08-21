@@ -41,21 +41,15 @@ def get_new_osti_pubs(conn, args):
 
     # Load SQL file
     try:
-        # sql_file = open("sql_files/get_new_osti_pubs_with_json.sql")
         sql_file = open("sql_files/get_new_osti_pubs_from_elements.sql")
         sql_query = sql_file.read()
-
     except Exception as e:
-        print("ERROR WHILE HANDLING SQL FILE. The file was unable to be located, \
-                or a problem occurred while reading its contents.")
+        print("ERROR WHILE OPENING OR READING SQL FILE.")
         raise e
 
-    cursor = conn.cursor()
-
-    # Elements query: Replace variable definitions with appropriate URLS
-    sql_query = replace_url_variable_values(args.input_qa, sql_query)
-
     print("Executing query to retrieve new OSTI pubs.")
+    sql_query = replace_url_variable_values(args.input_qa, sql_query)
+    cursor = conn.cursor()
     cursor.execute(sql_query)
 
     # pyodbc doesn't return dicts automatically, we have to make them ourselves
@@ -77,11 +71,11 @@ def generate_temp_table_sql(osti_eschol_db):
             doi VARCHAR(80),
             eschol_id VARCHAR(80),
             eschol_pr_modified_when DATETIME,
-            prf_filename VARCHAR(80),
+            prf_filename VARCHAR(200),
             prf_size BIGINT
         );
         COMMIT TRANSACTION
-        GO
+        GO;
         '''
 
     transaction_header = '''
@@ -99,7 +93,7 @@ def generate_temp_table_sql(osti_eschol_db):
 
     transaction_footer = '''
         COMMIT TRANSACTION
-        GO
+        GO;
         '''
 
     temp_table += transaction_header
@@ -115,7 +109,7 @@ def generate_temp_table_sql(osti_eschol_db):
             modified_when_formatted = modified_when_formatted[:-3]
 
         doi_formatted = row['doi'] \
-            if (row['doi'] is not None or row['doi'] != '') else "None"
+            if (row['doi'] is not None and row['doi'] != '') else "None"
 
         # Build the insert string
         value_strings.append(
@@ -153,22 +147,16 @@ def get_full_temp_table(cursor):
 
 # --------------------------
 def replace_url_variable_values(input_qa, sql_query):
-
     if input_qa:
-        sql_query = sql_query.replace(
-            'ELEMENTS_PUB_URL_REPLACE',
-            'https://qa-oapolicy.universityofcalifornia.edu/viewobject.html?cid=1&id=')
-        sql_query = sql_query.replace(
-            'ESCHOL_FILES_URL_REPLACE',
-            'https://pub-jschol2-stg.escholarship.org/content/')
-
+        sql_query = sql_query.replace('ELEMENTS_PUB_URL_REPLACE',
+                                      'https://qa-oapolicy.universityofcalifornia.edu/viewobject.html?cid=1&id=')
+        sql_query = sql_query.replace('ESCHOL_FILES_URL_REPLACE',
+                                      'https://pub-jschol2-stg.escholarship.org/content/')
     else:
-        sql_query = sql_query.replace(
-            'ELEMENTS_PUB_URL_REPLACE',
-            'https://oapolicy.universityofcalifornia.edu/viewobject.html?cid=1&id=')
-        sql_query = sql_query.replace(
-            'ESCHOL_FILES_URL_REPLACE',
-            'https://escholarship.org/content/')
+        sql_query = sql_query.replace('ELEMENTS_PUB_URL_REPLACE',
+                                      'https://oapolicy.universityofcalifornia.edu/viewobject.html?cid=1&id=')
+        sql_query = sql_query.replace('ESCHOL_FILES_URL_REPLACE',
+                                      'https://escholarship.org/content/')
 
     return sql_query
 
@@ -181,18 +169,13 @@ def get_osti_metadata_updates(conn, args):
     try:
         sql_file = open("sql_files/get_updated_metadata_from_elements.sql")
         sql_query = sql_file.read()
-
     except Exception as e:
-        print("ERROR WHILE HANDLING SQL FILE. The file was unable to be located, \
-                or a problem occurred while reading its contents.")
+        print("ERROR WHILE OPENING OR READING SQL FILE")
         raise e
 
-    cursor = conn.cursor()
-
-    # Elements query: Replace variable definitions with appropriate URLS
-    sql_query = replace_url_variable_values(args.input_qa, sql_query)
-
     print("Executing query to retrieve updated OSTI pub metadata.")
+    sql_query = replace_url_variable_values(args.input_qa, sql_query)
+    cursor = conn.cursor()
     cursor.execute(sql_query)
 
     # pyodbc doesn't return dicts automatically, we have to make them ourselves
@@ -210,18 +193,13 @@ def get_osti_media_updates(conn, args):
     try:
         sql_file = open("sql_files/get_updated_pdfs_from_elements.sql")
         sql_query = sql_file.read()
-
     except Exception as e:
-        print("ERROR WHILE HANDLING SQL FILE. The file was unable to be located, \
-                or a problem occurred while reading its contents.")
+        print("ERROR WHILE OPENING OR READING SQL FILE.")
         raise e
 
-    cursor = conn.cursor()
-
-    # Elements query: Replace variable definitions with appropriate URLS
-    sql_query = replace_url_variable_values(args.input_qa, sql_query)
-
     print("Executing query to retrieve updated OSTI pub PDFs.")
+    sql_query = replace_url_variable_values(args.input_qa, sql_query)
+    cursor = conn.cursor()
     cursor.execute(sql_query)
 
     # pyodbc doesn't return dicts automatically, we have to make them ourselves

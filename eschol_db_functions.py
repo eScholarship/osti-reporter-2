@@ -56,7 +56,7 @@ def get_eschol_osti_db(mysql_creds):
 
 
 # ------------------------------
-def update_eschol_osti_db(successful_submissions, mysql_creds):
+def update_osti_db_new_submissions(successful_submissions, mysql_creds):
 
     # connect to the mySql db
     try:
@@ -99,8 +99,7 @@ def update_eschol_osti_db(successful_submissions, mysql_creds):
             pub['eschol_pr_modified_when'].strftime('%Y-%m-%d %H:%M:%S.%f'),
             pub['Filename'],
             pub['File Size']
-        )
-         ).replace('"None"', 'Null').replace(', None', ', Null')
+        )).replace('"None"', 'Null').replace(', None', ', Null')
         for pub in successful_submissions]
 
     insert_query += (",\n".join(values_list)) + ";"
@@ -116,5 +115,32 @@ def update_eschol_osti_db(successful_submissions, mysql_creds):
 
 
 # ------------------------------
-def update_eschol_osti_db_updated_metadata(successful_submissions, mysql_creds):
-    pass
+def update_osti_db_metadata(successful_metadata_updates, mysql_creds):
+    from time import sleep
+    # connect to the mySql db
+    try:
+        mysql_conn = pymysql.connect(
+            host=mysql_creds['host'],
+            user=mysql_creds['user'],
+            password=mysql_creds['password'],
+            database=mysql_creds['database'],
+            cursorclass=pymysql.cursors.DictCursor)
+    except Exception as e:
+        print("ERROR WHILE CONNECTING TO MYSQL DATABASE.")
+        raise e
+
+    with mysql_conn.cursor() as cursor:
+        for pub in successful_metadata_updates:
+            print(f"Updating eschol db, Elements ID:{pub['id']}, OSTI ID:{pub['osti_id']}")
+            update_query = (f"""UPDATE {mysql_creds["table"]}
+                            SET eschol_ark='{pub['ark']}',
+                            doi='{pub['doi']}',
+                            lbnl_report_no='{pub['LBL Report Number']}',
+                            elements_id={pub['id']},
+                            eschol_id='{pub['eSchol ID']}',
+                            eschol_pr_modified_when='{pub['eschol_pr_modified_when'].strftime('%Y-%m-%d %H:%M:%S.%f')}'
+                            WHERE osti_id={pub['osti_id']}; """)
+
+            cursor.execute(update_query)
+            mysql_conn.commit()
+            sleep(3)
