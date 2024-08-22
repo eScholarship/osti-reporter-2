@@ -2,21 +2,7 @@ import pyodbc
 import write_logs
 
 
-# --------------------------
-# Query the Elements DB, find pubs which need to be sent.
-def get_new_osti_pubs(sql_creds, temp_table_query, args, log_folder):
-
-    # Load SQL file
-    try:
-        # sql_file = open("sql_files/get_new_osti_pubs_with_json.sql")
-        sql_file = open("sql_files/get_new_osti_pubs_from_elements.sql")
-        sql_query = sql_file.read()
-
-    except Exception as e:
-        print("ERROR WHILE HANDLING SQL FILE. The file was unable to be located, \
-                or a problem occurred while reading its contents.")
-        raise e
-
+def get_elements_connection(sql_creds):
     # Connect to db
     try:
         conn = pyodbc.connect(
@@ -33,6 +19,13 @@ def get_new_osti_pubs(sql_creds, temp_table_query, args, log_folder):
 
     print("Connected to Elements reporting DB.")
     conn.autocommit = True  # Required when queries use TRANSACTION
+
+    return conn
+
+
+# --------------------------
+# Make the temp table in elements
+def create_temp_table_in_elements(conn, temp_table_query, log_folder):
     cursor = conn.cursor()
 
     # Execute the temp table query in Elements
@@ -41,10 +34,22 @@ def get_new_osti_pubs(sql_creds, temp_table_query, args, log_folder):
     # Log the Elements temp table output.
     write_logs.output_temp_table_results(log_folder, get_full_temp_table(cursor))
 
-    # Elements query: Replace variable definitions with appropriate URLS
-    sql_query = replace_url_variable_values(args.input_qa, sql_query)
+
+# --------------------------
+# Query the Elements DB, find pubs which need to be sent.
+def get_new_osti_pubs(conn, args):
+
+    # Load SQL file
+    try:
+        sql_file = open("sql_files/get_new_osti_pubs_from_elements.sql")
+        sql_query = sql_file.read()
+    except Exception as e:
+        print("ERROR WHILE OPENING OR READING SQL FILE.")
+        raise e
 
     print("Executing query to retrieve new OSTI pubs.")
+    sql_query = replace_url_variable_values(args.input_qa, sql_query)
+    cursor = conn.cursor()
     cursor.execute(sql_query)
 
     # pyodbc doesn't return dicts automatically, we have to make them ourselves
@@ -55,28 +60,47 @@ def get_new_osti_pubs(sql_creds, temp_table_query, args, log_folder):
 
 
 # --------------------------
-def create_submitted_temp_table(osti_eschol_db):
+def generate_temp_table_sql(osti_eschol_db):
     print("Creating temp table with submitted OSTI data.")
 
     temp_table = '''
-BEGIN TRANSACTION 
-CREATE TABLE #osti_submitted
-(doi VARCHAR(80), eschol_id VARCHAR(80));
-COMMIT TRANSACTION
-GO
-'''
+        BEGIN TRANSACTION 
+        CREATE TABLE #osti_submitted (
+            osti_id INT,
+            elements_id INT,
+            doi VARCHAR(80),
+            eschol_id VARCHAR(80),
+            eschol_pr_modified_when DATETIME,
+            prf_filename VARCHAR(200),
+            prf_size BIGINT,
+            media_response_code INT,
+            media_id INT,
+            media_file_id INT
+        );
+        COMMIT TRANSACTION
+        GO;
+        '''
 
     transaction_header = '''
-BEGIN TRANSACTION
-INSERT INTO #osti_submitted
-(doi, eschol_id)
-VALUES
-'''
+        BEGIN TRANSACTION
+        INSERT INTO #osti_submitted (
+            osti_id,
+            elements_id,
+            doi,
+            eschol_id,
+            eschol_pr_modified_when,
+            prf_filename,
+            prf_size,
+            media_response_code,
+            media_id,
+            media_file_id)
+        VALUES
+        '''
 
     transaction_footer = '''
-COMMIT TRANSACTION
-GO
-'''
+        COMMIT TRANSACTION
+        GO;
+        '''
 
     temp_table += transaction_header
     value_strings = []
@@ -84,11 +108,26 @@ GO
 
     for index, row in enumerate(osti_eschol_db, 1):
 
-        # Skip any null DOIs
-        if not row['doi']:
-            value_strings.append("(NULL, '" + row['eschol_id'] + "')")
-        else:
-            value_strings.append("('" + row['doi'] + "', '" + row['eschol_id'] + "')")
+        # MSSQL only accepts datetime/timestamp with 3 digits of fractional time
+        if row['eschol_pr_modified_when'] is not None:
+            row['eschol_pr_modified_when'] = row['eschol_pr_modified_when'].strftime('%Y-%m-%d %H:%M:%S.%f')
+            row['eschol_pr_modified_when'] = row['eschol_pr_modified_when'][:-3]
+
+        row = convert_nulls_for_sql(row)
+        value_strings.append(
+            (f"""(
+            {row['osti_id']},
+            {row['elements_id']},
+            '{row['doi']}',
+            '{row['eschol_id']}',
+            '{row['eschol_pr_modified_when']}',
+            '{row['prf_filename']}',
+            {row['prf_size']},
+            {row['media_response_code']},
+            {row['media_id']},
+            {row['media_file_id']})"""
+             ).replace("'Null'", 'Null')
+        )
 
         if index % insert_limit == 0:
             temp_table += ",\n".join(value_strings)
@@ -113,21 +152,75 @@ def get_full_temp_table(cursor):
 
 # --------------------------
 def replace_url_variable_values(input_qa, sql_query):
-
     if input_qa:
-        sql_query = sql_query.replace(
-            'ELEMENTS_PUB_URL_REPLACE',
-            'https://qa-oapolicy.universityofcalifornia.edu/viewobject.html?cid=1&id=')
-        sql_query = sql_query.replace(
-            'ESCHOL_FILES_URL_REPLACE',
-            'https://pub-jschol2-stg.escholarship.org/content/')
-
+        sql_query = sql_query.replace('ELEMENTS_PUB_URL_REPLACE',
+                                      'https://qa-oapolicy.universityofcalifornia.edu/viewobject.html?cid=1&id=')
+        sql_query = sql_query.replace('ESCHOL_FILES_URL_REPLACE',
+                                      'https://pub-jschol2-stg.escholarship.org/content/')
     else:
-        sql_query = sql_query.replace(
-            'ELEMENTS_PUB_URL_REPLACE',
-            'https://oapolicy.universityofcalifornia.edu/viewobject.html?cid=1&id=')
-        sql_query = sql_query.replace(
-            'ESCHOL_FILES_URL_REPLACE',
-            'https://escholarship.org/content/')
+        sql_query = sql_query.replace('ELEMENTS_PUB_URL_REPLACE',
+                                      'https://oapolicy.universityofcalifornia.edu/viewobject.html?cid=1&id=')
+        sql_query = sql_query.replace('ESCHOL_FILES_URL_REPLACE',
+                                      'https://escholarship.org/content/')
 
     return sql_query
+
+
+# --------------------------
+# Get OSTI-submitted items who've had metadata updates.
+def get_osti_metadata_updates(conn, args):
+
+    # Load SQL file
+    try:
+        sql_file = open("sql_files/get_updated_metadata_from_elements.sql")
+        sql_query = sql_file.read()
+    except Exception as e:
+        print("ERROR WHILE OPENING OR READING SQL FILE")
+        raise e
+
+    print("Executing query to retrieve updated OSTI pub metadata.")
+    sql_query = replace_url_variable_values(args.input_qa, sql_query)
+    cursor = conn.cursor()
+    cursor.execute(sql_query)
+
+    # pyodbc doesn't return dicts automatically, we have to make them ourselves
+    columns = [column[0] for column in cursor.description]
+    rows = [dict(zip(columns, row)) for row in cursor.fetchall()]
+
+    return rows
+
+
+# --------------------------
+# Get OSTI-submitted items whose PDFs have been re-deposited
+def get_osti_media_updates(conn, args):
+
+    # Load SQL file
+    try:
+        sql_file = open("sql_files/get_updated_pdfs_from_elements.sql")
+        sql_query = sql_file.read()
+    except Exception as e:
+        print("ERROR WHILE OPENING OR READING SQL FILE.")
+        raise e
+
+    print("Executing query to retrieve updated OSTI pub PDFs.")
+    sql_query = replace_url_variable_values(args.input_qa, sql_query)
+    cursor = conn.cursor()
+    cursor.execute(sql_query)
+
+    # pyodbc doesn't return dicts automatically, we have to make them ourselves
+    columns = [column[0] for column in cursor.description]
+    rows = [dict(zip(columns, row)) for row in cursor.fetchall()]
+
+    return rows
+
+
+def convert_nulls_for_sql(pub):
+    converted_pub = {}
+
+    for k, v in pub.items():
+        if v is None or v == "None" or v == "":
+            converted_pub[k] = "Null"
+        else:
+            converted_pub[k] = pub[k]
+
+    return converted_pub

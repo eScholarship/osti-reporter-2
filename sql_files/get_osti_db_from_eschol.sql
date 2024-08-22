@@ -1,3 +1,15 @@
 SELECT
-    id, doi, eschol_ark, md5, substring(eschol_ark,12) as 'eschol_id'
+    id,
+    osti_id,
+    doi,
+    elements_id,
+    eschol_ark,
+    substring(eschol_ark,12) as 'eschol_id',
+    md5,
+    eschol_pr_modified_when,
+    prf_filename,
+    prf_size,
+    media_response_code,
+    media_id,
+    media_file_id
 From table_replace;
