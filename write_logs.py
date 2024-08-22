@@ -42,12 +42,10 @@ def output_elements_query_results(log_folder, new_osti_pubs):
 def output_submissions(log_folder, new_osti_pubs, elink_version, submission_type="NEW"):
 
     if elink_version == 1:
-        for index, osti_pub in enumerate(new_osti_pubs):
-            filename = "V1-" + str(index) + "-SUBMISSION"
-            with open(log_folder + "/" + filename + ".xml", "wb") as out_file:
-                out_file.write(osti_pub['submission_xml_string'])
+        import write_logs_v1
+        write_logs_v1.output_submissions(log_folder, new_osti_pubs)
 
-    elif elink_version == 2:
+    else:
         for index, osti_pub in enumerate(new_osti_pubs):
             filename = f"V2-{submission_type}-{str(index)}-SUBMISSION"
             osti_pub_json_string = json.dumps(osti_pub['submission_json'], indent=4)
@@ -58,13 +56,10 @@ def output_submissions(log_folder, new_osti_pubs, elink_version, submission_type
 def output_responses(log_folder, new_osti_pubs, elink_version):
 
     if elink_version == 1:
-        responses = [pub['response_xml_text'] for pub in new_osti_pubs]
-        for index, response_xml_text in enumerate(responses):
-            filename = "V1-" + str(index) + "-RESPONSE"
-            with open(log_folder + "/" + filename + ".xml", "w") as out_file:
-                out_file.write(response_xml_text)
+        import write_logs_v1
+        write_logs_v1.output_responses(log_folder, new_osti_pubs)
 
-    elif elink_version == 2:
+    else:
         responses = [pub['response_json'] for pub in new_osti_pubs]
         for index, response_json in enumerate(responses):
             filename = "V2-" + str(index) + "-RESPONSE"
@@ -74,29 +69,5 @@ def output_responses(log_folder, new_osti_pubs, elink_version):
 
 
 def output_json_generic(log_folder, data, elink_version, filename):
-
     with open(f"{log_folder}/V{elink_version}-{filename}.json", "w") as out_file:
         out_file.write(json.dumps(data, indent=4, default=serialize_datetime))
-
-
-def console_final_report(new_submissions, metadata_updates, pdf_updates):
-    pass
-
-    # TK TK pick up here
-    print('\n\n\n----------------')
-    print('FINAL REPORT:\n')
-
-    if not new_submissions:
-        print("New submissions: None.")
-    else:
-        print(f"New submissions: {len(new_submissions)}")
-        success_pubs = [pub for pub in new_submissions if pub['response_success'] is True]
-        fail_pubs = [pub for pub in new_submissions if pub['response_success'] is False]
-        print(f"Success: {len(success_pubs)}")
-        print(f"Failure: {len(fail_pubs)}")
-        print("Failures itemized:")
-
-        for pub in fail_pubs:
-            pass
-
-    pass

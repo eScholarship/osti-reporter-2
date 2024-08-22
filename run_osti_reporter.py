@@ -1,31 +1,25 @@
 # OSTI eLink documentation https://review.osti.gov/elink2api/
 
-# ========================================
-# External libraries
-
-# This script requires a "creds.py" in its directory.
-# See "creds_template.py" for the required format.
+# Program modules
 import program_setup
 import write_logs
 import eschol_db_functions as eschol
 import elements_db_functions as elements
-import transform_pubs_v1            # Can remove this when E-link v2 goes live.
-import submit_pubs_v1 as elink_1    # Can remove this when E-link v2 goes live.
-import transform_pubs_v2
-import submit_pubs_v2 as elink_2
+import transform_pubs
+import submit_pubs as elink_2
 
-
-# ========================================
 # Global vars
 submission_limit = 200
+sleep_time = 3
 
 
-# ========================================
 def main():
+
+    # These lists are populated during the submission process.
     new_osti_pubs, new_osti_pdfs, osti_metadata_updates, osti_pdf_updates = None, None, None, None
 
     # ---------- GENERAL SETUP
-    # Process args, (exit if invalid); Assign creds based on args; Create the log folder
+    # Process args; Assign creds based on args; Create the log folder.
     args = program_setup.process_args()
     creds = program_setup.assign_creds(args)
     log_folder = write_logs.create_log_folder()
@@ -36,15 +30,15 @@ def main():
     # Gets the db connections for Elements
     elements_conn = elements.get_elements_connection(creds['elements_reporting_db'])
 
-    # OSTI eSchol DB --> Elements temp table
+    # eSchol OSTI DB --> Elements temp table
     transfer_temp_table(creds, elements_conn, log_folder)
 
-    # E-Link 1
+    # ---------- E-Link 1
     if args.elink_version == 1 and not args.test_updates:
         new_osti_pubs = process_elink_1_pubs(args, creds, elements_conn, log_folder)
 
-    # E-Link 2
-    else:
+    # ---------- E-Link 2
+    elif args.elink_version == 2:
         if not args.test_updates:
             new_osti_pubs = process_new_osti_pubs(args, creds, elements_conn, log_folder)
             new_osti_pdfs = process_new_osti_pdfs(args, creds, elements_conn, log_folder, new_osti_pubs)
@@ -53,13 +47,11 @@ def main():
             osti_metadata_updates = process_metadata_updates(args, creds, elements_conn, log_folder)
             osti_pdf_updates = process_pdf_updates(args, creds, elements_conn, log_folder)
 
-    # Print a digest of the completed work
+    # Prints a digest of completed work
     print_final_report(new_osti_pubs, new_osti_pdfs, osti_metadata_updates, osti_pdf_updates)
 
-    # Close elements db connections
+    # Close connections.
     elements_conn.close()
-
-    # Close SSH tunnel if needed
     if ssh_server:
         ssh_server.stop()
 
@@ -82,6 +74,9 @@ def transfer_temp_table(creds, elements_conn, log_folder):
 # =======================================
 # E-Link 1
 def process_elink_1_pubs(args, creds, elements_conn, log_folder):
+    import transform_pubs_v1  # Can remove this when E-link v2 goes live.
+    import submit_pubs_v1 as elink_1  # Can remove this when E-link v2 goes live.
+
     print("\nQuerying Elements Reporting DB for new OSTI publications.")
     new_osti_pubs = elements.get_new_osti_pubs(elements_conn, args)
 
@@ -117,10 +112,11 @@ def process_elink_1_pubs(args, creds, elements_conn, log_folder):
 
     # Update eSchol OSTI DB with new successful submissions
     successful_submissions = [pub for pub in new_osti_pubs if pub['response_success'] is True]
+
     if len(successful_submissions) == 0:
         print("\nNo successful metadata submissions in this set. Proceeding.")
     else:
-        print("\nAdding new successful metadata submissions to eSchol OSTI DB.")
+        print("\nAdding new successful metadata submissions to eSchol OSTI DB:")
         eschol.insert_new_metadata_submissions(successful_submissions, creds['eschol_db_write'])
 
     return new_osti_pubs
@@ -146,7 +142,7 @@ def process_new_osti_pubs(args, creds, elements_conn, log_folder):
     write_logs.output_elements_query_results(log_folder, new_osti_pubs)
 
     # Add the OSTI-specific submission JSONs
-    new_osti_pubs = transform_pubs_v2.add_osti_data_v2(new_osti_pubs, args.test)
+    new_osti_pubs = transform_pubs.add_osti_data_v2(new_osti_pubs, args.test)
 
     # Log transformed submissions
     write_logs.output_submissions(log_folder, new_osti_pubs, args.elink_version)
@@ -167,11 +163,13 @@ def process_new_osti_pubs(args, creds, elements_conn, log_folder):
     write_logs.output_json_generic(log_folder, new_osti_pubs, args.elink_version, "v2-responses")
 
     # Update eSchol OSTI DB with new successful submissions
-    successful_submissions = [pub for pub in new_osti_pubs if pub['response_success'] is True]
+    successful_submissions = [
+        pub for pub in new_osti_pubs if pub['response_success'] is True]
+
     if len(successful_submissions) == 0:
         print("\nNo successful metadata submissions in this set. Proceeding.")
     else:
-        print("\nAdding new successful metadata submissions to eSchol OSTI DB.")
+        print("\nAdding new successful metadata submissions to eSchol OSTI DB:")
         eschol.insert_new_metadata_submissions(successful_submissions, creds['eschol_db_write'])
 
     return new_osti_pubs
@@ -213,7 +211,7 @@ def process_metadata_updates(args, creds, elements_conn, log_folder):
         osti_metadata_updates = osti_metadata_updates[submission_limit:]
 
     # Transform metadata updates for submission
-    osti_metadata_updates = transform_pubs_v2.add_osti_data_v2(osti_metadata_updates, args.test)
+    osti_metadata_updates = transform_pubs.add_osti_data_v2(osti_metadata_updates, args.test)
 
     # Log metadata updates
     write_logs.output_submissions(
@@ -227,11 +225,13 @@ def process_metadata_updates(args, creds, elements_conn, log_folder):
         log_folder, osti_metadata_updates, args.elink_version, "v2-update-responses")
 
     # Update eSchol OSTI DB with new successful submissions
-    successful_metadata_updates = [pub for pub in osti_metadata_updates if pub['response_success'] is True]
+    successful_metadata_updates = [
+        pub for pub in osti_metadata_updates if pub['response_success'] is True]
+
     if len(successful_metadata_updates) == 0:
         print("No successful metadata updates. Proceeding.")
     else:
-        print("\nWriting successful metadata updates to eschol osti db.")
+        print("\nWriting successful metadata updates to to eSchol OSTI DB:")
         eschol.update_osti_db_metadata(successful_metadata_updates, creds['eschol_db_write'])
 
     return osti_metadata_updates
@@ -258,10 +258,18 @@ def process_pdf_updates(args, creds, elements_conn, log_folder):
 
 # =======================================
 def print_final_report(new_osti_pubs, new_osti_pdfs, osti_metadata_updates, osti_pdf_updates):
+
+    def print_report_header():
+        print("\n\n========================================"
+              "\n         OSTI REPORTER: SUMMARY"
+              "\n========================================\n")
+
     def report_builder(pubs, message, success_field, failure_json_field):
         print("\n--------------------")
+
         if not pubs:
             print(f"No {message}")
+
         else:
             success = [p for p in pubs if p[success_field]]
             failure = [p for p in pubs if not p[success_field]]
@@ -277,9 +285,7 @@ def print_final_report(new_osti_pubs, new_osti_pdfs, osti_metadata_updates, osti
                     print(f"\n{f['id']}")
                     print(f[failure_json_field])
 
-    print("\n\n========================================"
-          "\nFINAL REPORT"
-          "\n========================================\n\n")
+    print_report_header()
 
     report_builder(new_osti_pubs, "new pubs sent to OSTI.",
                    'response_success', 'response_json')
@@ -292,6 +298,8 @@ def print_final_report(new_osti_pubs, new_osti_pdfs, osti_metadata_updates, osti
 
     report_builder(osti_pdf_updates, "replacement PDFs sent to OSTI.",
                    'media_response_success', 'media_response_json')
+
+    print_report_header()
 
 
 # =======================================
