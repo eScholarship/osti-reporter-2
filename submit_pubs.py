@@ -1,3 +1,4 @@
+# OSTI E-Link 2 documentation https://review.osti.gov/elink2api/
 import requests
 
 
@@ -34,10 +35,12 @@ def submit_new_pdfs(pubs_for_media_submission, osti_creds):
 
         if pub['media_response_success']:
             print("Media submission OK.")
+            pub['media_id'] = media_response.json()['files'][0]['media_id']
             pub['media_file_id'] = media_response.json()['files'][0]['media_file_id']
         else:
             print(f"Media submission failure: {media_response.status_code}")
             print(pub['media_response_json'])
+            pub['media_id'] = None
             pub['media_file_id'] = None
 
     return pubs_for_media_submission
@@ -63,9 +66,37 @@ def submit_metadata_updates(updated_osti_pubs, osti_creds):
 
 
 # Replace PDF, or try a new PDF if the eSchol OSTI DB contains an error response.
-def submit_media_updates(updated_media_pubs, osti_creds, submission_limit):
-    # TK Assess whether the initial submission failed (ie, no media_file_id), or it's a replaced PDF.
-    pass
+def submit_media_updates(updated_media_pubs, osti_creds):
+
+    for pub in updated_media_pubs:
+        print(f"\nSubmitting media update: Elements ID {pub['id']}, OSTI ID {pub['osti_id']},"
+              f"\nMedia ID: {pub['media_id']}, Media File ID: {pub['media_file_id']}"
+              f"\nPDF: {pub['File URL']}")
+
+        # A null media_id means there was an error with the first pdf submission,
+        # so it requires a post() b/c no media file currently exists.
+        media_response = None
+        if pub['media_id'] is None or 'media_id' not in pub.keys():
+            print("No media file ID: New PDF submission.")
+            media_response = post_media(osti_creds, pub)
+        else:
+            print("Existing file ID: Updating PDF.")
+            media_response = put_media(osti_creds, pub)
+
+        pub['media_response_code'] = media_response.status_code
+        pub['media_response_json'] = media_response.json()
+        pub['media_response_success'] = (media_response.status_code < 300)
+
+        if pub['media_response_success']:
+            print("Media update OK.")
+            pub['media_id'] = media_response.json()['files'][0]['media_id']
+            pub['media_file_id'] = media_response.json()['files'][0]['media_file_id']
+        else:
+            print(f"Media update failure: {media_response.status_code}")
+            pub['media_id'] = None
+            pub['media_file_id'] = None
+
+    return updated_media_pubs
 
 
 def post_metadata(osti_creds, pub):
@@ -97,7 +128,7 @@ def post_media(osti_creds, pub):
 
 
 def put_media(osti_creds, pub):
-    req_url = f"{osti_creds['base_url']}/media/{pub['osti_id']}/{pub['media_file_id']}"
+    req_url = f"{osti_creds['base_url']}/media/{pub['osti_id']}/{pub['media_id']}"
     params = {'url': pub['File URL'], 'title': pub['title']}
     headers = {'Authorization': 'Bearer ' + osti_creds['token']}
 

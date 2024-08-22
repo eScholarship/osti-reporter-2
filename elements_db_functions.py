@@ -72,7 +72,10 @@ def generate_temp_table_sql(osti_eschol_db):
             eschol_id VARCHAR(80),
             eschol_pr_modified_when DATETIME,
             prf_filename VARCHAR(200),
-            prf_size BIGINT
+            prf_size BIGINT,
+            media_response_code INT,
+            media_id INT,
+            media_file_id INT
         );
         COMMIT TRANSACTION
         GO;
@@ -87,7 +90,10 @@ def generate_temp_table_sql(osti_eschol_db):
             eschol_id,
             eschol_pr_modified_when,
             prf_filename,
-            prf_size)
+            prf_size,
+            media_response_code,
+            media_id,
+            media_file_id)
         VALUES
         '''
 
@@ -103,25 +109,24 @@ def generate_temp_table_sql(osti_eschol_db):
     for index, row in enumerate(osti_eschol_db, 1):
 
         # MSSQL only accepts datetime/timestamp with 3 digits of fractional time
-        modified_when_formatted = row['eschol_pr_modified_when'].strftime('%Y-%m-%d %H:%M:%S.%f') \
-            if row['eschol_pr_modified_when'] is not None else None
-        if modified_when_formatted is not None:
-            modified_when_formatted = modified_when_formatted[:-3]
+        if row['eschol_pr_modified_when'] is not None:
+            row['eschol_pr_modified_when'] = row['eschol_pr_modified_when'].strftime('%Y-%m-%d %H:%M:%S.%f')
+            row['eschol_pr_modified_when'] = row['eschol_pr_modified_when'][:-3]
 
-        doi_formatted = row['doi'] \
-            if (row['doi'] is not None and row['doi'] != '') else "None"
-
-        # Build the insert string
+        row = convert_nulls_for_sql(row)
         value_strings.append(
-            ("(%s, %s, '%s', '%s', '%s', '%s', %s)" % (
-                row['osti_id'],
-                row['elements_id'],
-                doi_formatted,
-                row['eschol_id'],
-                modified_when_formatted,
-                row['prf_filename'],
-                row['prf_size'])
-             ).replace("'None'", 'Null').replace(', None', ', Null')
+            (f"""(
+            {row['osti_id']},
+            {row['elements_id']},
+            '{row['doi']}',
+            '{row['eschol_id']}',
+            '{row['eschol_pr_modified_when']}',
+            '{row['prf_filename']}',
+            {row['prf_size']},
+            {row['media_response_code']},
+            {row['media_id']},
+            {row['media_file_id']})"""
+             ).replace("'Null'", 'Null')
         )
 
         if index % insert_limit == 0:
@@ -207,3 +212,15 @@ def get_osti_media_updates(conn, args):
     rows = [dict(zip(columns, row)) for row in cursor.fetchall()]
 
     return rows
+
+
+def convert_nulls_for_sql(pub):
+    converted_pub = {}
+
+    for k, v in pub.items():
+        if v is None or v == "None" or v == "":
+            converted_pub[k] = "Null"
+        else:
+            converted_pub[k] = pub[k]
+
+    return converted_pub

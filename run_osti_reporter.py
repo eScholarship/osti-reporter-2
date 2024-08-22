@@ -1,5 +1,3 @@
-# OSTI eLink documentation https://review.osti.gov/elink2api/
-
 # Program modules
 import program_setup
 import write_logs
@@ -8,13 +6,14 @@ import elements_db_functions as elements
 import transform_pubs
 import submit_pubs as elink_2
 
+
 # Global vars
 submission_limit = 200
 sleep_time = 3
 
 
+# =======================================
 def main():
-
     # These lists are populated during the submission process.
     new_osti_pubs, new_osti_pdfs, osti_metadata_updates, osti_pdf_updates = None, None, None, None
 
@@ -72,10 +71,10 @@ def transfer_temp_table(creds, elements_conn, log_folder):
 
 
 # =======================================
-# E-Link 1
+# E-Link 1: New OSTI pubs -- Can remove this when E-Link 2 goes live.
 def process_elink_1_pubs(args, creds, elements_conn, log_folder):
-    import transform_pubs_v1  # Can remove this when E-link v2 goes live.
-    import submit_pubs_v1 as elink_1  # Can remove this when E-link v2 goes live.
+    import transform_pubs_v1
+    import submit_pubs_v1 as elink_1
 
     print("\nQuerying Elements Reporting DB for new OSTI publications.")
     new_osti_pubs = elements.get_new_osti_pubs(elements_conn, args)
@@ -189,7 +188,7 @@ def process_new_osti_pdfs(args, creds, elements_conn, log_folder, new_osti_pubs)
 
     print("\nUpdating eSchol OSTI DB with media responses"
           "\n(Note: Failure codes will be saved to the eSchol DB if received)")
-    eschol.update_new_submissions_with_pdfs(new_osti_pubs_with_pdf_responses, creds['eschol_db_write'])
+    eschol.update_osti_db_with_pdfs(new_osti_pubs_with_pdf_responses, creds['eschol_db_write'])
 
     return new_osti_pubs_with_pdf_responses
 
@@ -245,15 +244,17 @@ def process_pdf_updates(args, creds, elements_conn, log_folder):
     osti_media_updates = elements.get_osti_media_updates(elements_conn, args)
 
     if not osti_media_updates:
-        print("No replaced PDFs to resubmit. Proceeding.")
+        print("No updated PDFs for resubmission. Proceeding.")
         return False
 
-    # print(osti_media_updates)
-    elink_2.submit_media_updates(osti_media_updates, creds['osti_api'], submission_limit)
+    print("\nSubmitting updated PDFs to OSTI:")
+    elink_2.submit_media_updates(osti_media_updates, creds['osti_api'])
 
-    # for testing
-    return False
-    # return osti_media_updates
+    print("\nUpdating eSchol OSTI DB with updated media responses"
+          "\n(Note: Failure codes will be saved to the eSchol DB if received)")
+    eschol.update_osti_db_with_pdfs(osti_media_updates, creds['eschol_db_write'])
+
+    return osti_media_updates
 
 
 # =======================================
@@ -275,10 +276,12 @@ def print_final_report(new_osti_pubs, new_osti_pdfs, osti_metadata_updates, osti
             failure = [p for p in pubs if not p[success_field]]
 
             print(f"{len(pubs)} total {message}")
+
             if success:
-                print(f"{len(success)} successful submissions (Elements IDs):")
+                print(f"\n{len(success)} successful submissions (Elements IDs):")
                 for s in success:
                     print(s['id'])
+
             if failure:
                 print(f"\n{len(failure)} failed submissions:")
                 for f in failure:

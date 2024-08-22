@@ -16,9 +16,12 @@ DECLARE @eschol_files_url VARCHAR(120) = 'ESCHOL_FILES_URL_REPLACE';
 SELECT DISTINCT
     os.[osti_id],
     os.[eschol_id] AS [OSTI eschol_id],
+    os.[media_id],
+    os.[media_file_id],
     os.[prf_filename] as [osti_prf_filename],
     os.[prf_size] as [osti_prf_size],
     p.id,
+    p.title,
     pr.[ID] AS [Pub Record ID],
     pr.[Data Source Proprietary ID] AS [eSchol ID],
     prf.[Filename],
@@ -73,6 +76,8 @@ FROM
 WHERE
 	-- Primary file is different from what we have on record
 	os.[prf_filename] is not NULL
-	AND (os.[prf_filename] != prf.[Filename]
-	    OR os.[prf_size] != prf.[Size]);
-
+	AND (
+	        (os.[prf_filename] != prf.[Filename] OR os.[prf_size] != prf.[Size])
+	        OR
+	        (os.[media_response_code] IS NOT NULL AND os.[media_response_code] > 300)
+	    );

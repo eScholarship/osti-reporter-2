@@ -6,8 +6,10 @@ SELECT
     eschol_ark,
     substring(eschol_ark,12) as 'eschol_id',
     md5,
-    media_response_code,
     eschol_pr_modified_when,
     prf_filename,
-    prf_size
+    prf_size,
+    media_response_code,
+    media_id,
+    media_file_id
 From table_replace;
