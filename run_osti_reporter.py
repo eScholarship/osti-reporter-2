@@ -36,20 +36,25 @@ def main():
     # Gets the db connections for Elements
     elements_conn = elements.get_elements_connection(creds['elements_reporting_db'])
 
-    # ---------- OSTI ESCHOL DB --> ELEMENTS TEMP TABLE
-    handle_temp_table_transfer(creds, elements_conn, log_folder)
+    # OSTI eSchol DB --> Elements temp table
+    transfer_temp_table(creds, elements_conn, log_folder)
 
-    # ---------- FIND AND SEND NEW ITEMS
-    if not args.test_updates:
-        new_osti_pubs = handle_new_osti_pubs(args, creds, elements_conn, log_folder)
-        # new_osti_pdfs = handle_new_osti_pdfs(args, creds, elements_conn, log_folder, new_osti_pubs)
+    # E-Link 1
+    if args.elink_version == 1 and not args.test_updates:
+        new_osti_pubs = process_elink_1_pubs(args, creds, elements_conn, log_folder)
 
-    # ---------- METADATA & PDF UPDATES
-    if args.elink_version == 2 and args.send_updates:
-        osti_metadata_updates = handle_metadata_updates(args, creds, elements_conn, log_folder)
-        osti_pdf_updates = handle_pdf_updates(args, creds, elements_conn, log_folder)
+    # E-Link 2
+    else:
+        if not args.test_updates:
+            new_osti_pubs = process_new_osti_pubs(args, creds, elements_conn, log_folder)
+            new_osti_pdfs = process_new_osti_pdfs(args, creds, elements_conn, log_folder, new_osti_pubs)
 
-    # TK final log here
+        if args.send_updates:
+            osti_metadata_updates = process_metadata_updates(args, creds, elements_conn, log_folder)
+            osti_pdf_updates = process_pdf_updates(args, creds, elements_conn, log_folder)
+
+    # Print a digest of the completed work
+    print_final_report(new_osti_pubs, new_osti_pdfs, osti_metadata_updates, osti_pdf_updates)
 
     # Close elements db connections
     elements_conn.close()
@@ -58,15 +63,15 @@ def main():
     if ssh_server:
         ssh_server.stop()
 
-    print("Program complete. Exiting.\n\n")
+    print("\nProgram complete. Exiting.\n\n")
 
 
 # =======================================
-def handle_temp_table_transfer(creds, elements_conn, log_folder):
+def transfer_temp_table(creds, elements_conn, log_folder):
     # Get the data from the eschol_osti db
     osti_eschol_db_pubs = eschol.get_eschol_osti_db(creds['eschol_db_read'])
 
-    # Create the temp table .SQL; log the SQL
+    # Create the temp table .SQL, and log it
     temp_table_query = elements.generate_temp_table_sql(osti_eschol_db_pubs)
     write_logs.output_temp_table_query(log_folder, temp_table_query)
 
@@ -75,68 +80,125 @@ def handle_temp_table_transfer(creds, elements_conn, log_folder):
 
 
 # =======================================
-# New OSTI Pubs
-def handle_new_osti_pubs(args, creds, elements_conn, log_folder):
-
-    print("\nQuerying for new OSTI publications.")
+# E-Link 1
+def process_elink_1_pubs(args, creds, elements_conn, log_folder):
+    print("\nQuerying Elements Reporting DB for new OSTI publications.")
     new_osti_pubs = elements.get_new_osti_pubs(elements_conn, args)
 
     if not new_osti_pubs:
         print("No new OSTI publications were found. Proceeding.")
         return False
 
+    print(f"\n{len(new_osti_pubs)} new pubs for submission.")
+    if len(new_osti_pubs) > submission_limit:
+        print(f"Truncating new pub list to submission limit ({submission_limit})")
+        new_osti_pubs = new_osti_pubs[submission_limit:]
+
+    # Log Elements query results
+    write_logs.output_elements_query_results(log_folder, new_osti_pubs)
+
+    # Add the OSTI-specific submission XMLs
+    new_osti_pubs = transform_pubs_v1.add_osti_data_v1(new_osti_pubs, args.test)
+
+    # Log transformed submissions
+    write_logs.output_submissions(log_folder, new_osti_pubs, args.elink_version)
+
+    # If running in test mode, skip the submission step.
+    if args.test:
+        print("Run with test output only. Exiting.")
+        elements_conn.close()
+        exit(0)
+
+    # Otherwise, send the submission XMLs to the OSTI API.
+    new_osti_pubs = elink_1.submit_pubs(new_osti_pubs, creds['osti_api'], submission_limit)
+
+    # Output pub objects with responses
+    write_logs.output_json_generic(log_folder, new_osti_pubs, args.elink_version, "v1-responses")
+
+    # Update eSchol OSTI DB with new successful submissions
+    successful_submissions = [pub for pub in new_osti_pubs if pub['response_success'] is True]
+    if len(successful_submissions) == 0:
+        print("\nNo successful metadata submissions in this set. Proceeding.")
     else:
-        # Log Elements query results
-        print(f"\n{len(new_osti_pubs)} new pubs for submission.")
-        write_logs.output_elements_query_results(log_folder, new_osti_pubs)
+        print("\nAdding new successful metadata submissions to eSchol OSTI DB.")
+        eschol.insert_new_metadata_submissions(successful_submissions, creds['eschol_db_write'])
 
-        # Add OSTI-specific metadata
-        if args.elink_version == 1:
-            new_osti_pubs = transform_pubs_v1.add_osti_data_v1(new_osti_pubs, args.test)
-        elif args.elink_version == 2:
-            new_osti_pubs = transform_pubs_v2.add_osti_data_v2(new_osti_pubs, args.test)
+    return new_osti_pubs
 
-        # Log transformed submissions
-        write_logs.output_submissions(log_folder, new_osti_pubs, args.elink_version)
 
-        # If running in test mode, skip the submission step.
-        if args.test:
-            print("Run with test output only. Exiting.")
-            elements_conn.close()
-            exit(0)
+# =======================================
+# New OSTI Pubs
+def process_new_osti_pubs(args, creds, elements_conn, log_folder):
 
-        # Otherwise, send the xml (v1) or json (v2) submissions to the OSTI API.
-        if args.elink_version == 1:
-            new_osti_pubs = elink_1.submit_pubs(new_osti_pubs, creds['osti_api'], submission_limit)
-        elif args.elink_version == 2:
-            new_osti_pubs = elink_2.submit_pubs(new_osti_pubs, creds['osti_api'], submission_limit)
+    print("\nQuerying Elements Reporting DB for new OSTI publications.")
+    new_osti_pubs = elements.get_new_osti_pubs(elements_conn, args)
 
-        # Log OSTI API responses
-        write_logs.output_responses(log_folder, new_osti_pubs, args.elink_version)
+    if not new_osti_pubs:
+        print("No new OSTI publications were found. Proceeding.")
+        return False
 
-        # Output pub objects with responses
-        if args.elink_version == 2:
-            write_logs.output_json_generic(log_folder, new_osti_pubs, args.elink_version, "v2-responses")
+    print(f"\n{len(new_osti_pubs)} new pubs for submission.")
+    if len(new_osti_pubs) > submission_limit:
+        print(f"Truncating new pub list to submission limit ({submission_limit})")
+        new_osti_pubs = new_osti_pubs[submission_limit:]
 
-        # Update eSchol OSTI DB with new successful submissions
-        successful_submissions = [pub for pub in new_osti_pubs if pub['response_success'] is True]
-        if len(successful_submissions) == 0:
-            print("No successful submissions in this set of publications. Proceeding.")
-        else:
-            eschol.update_osti_db_new_submissions(successful_submissions, creds['eschol_db_write'])
+    # Log Elements query results
+    write_logs.output_elements_query_results(log_folder, new_osti_pubs)
 
-        return new_osti_pubs
+    # Add the OSTI-specific submission JSONs
+    new_osti_pubs = transform_pubs_v2.add_osti_data_v2(new_osti_pubs, args.test)
+
+    # Log transformed submissions
+    write_logs.output_submissions(log_folder, new_osti_pubs, args.elink_version)
+
+    # If running in test mode, skip the submission step.
+    if args.test:
+        print("Run with test output only. Exiting.")
+        elements_conn.close()
+        exit(0)
+
+    # Otherwise, send the submission jsons to the OSTI API.
+    new_osti_pubs = elink_2.submit_new_pubs(new_osti_pubs, creds['osti_api'])
+
+    # Log OSTI API responses -- TK this is handy for testing but can be removed
+    # write_logs.output_responses(log_folder, new_osti_pubs, args.elink_version)
+
+    # Output pub objects with responses
+    write_logs.output_json_generic(log_folder, new_osti_pubs, args.elink_version, "v2-responses")
+
+    # Update eSchol OSTI DB with new successful submissions
+    successful_submissions = [pub for pub in new_osti_pubs if pub['response_success'] is True]
+    if len(successful_submissions) == 0:
+        print("\nNo successful metadata submissions in this set. Proceeding.")
+    else:
+        print("\nAdding new successful metadata submissions to eSchol OSTI DB.")
+        eschol.insert_new_metadata_submissions(successful_submissions, creds['eschol_db_write'])
+
+    return new_osti_pubs
 
 
 # =======================================
 # New PDFs
-def handle_new_osti_pdfs(args, creds, elements_conn, log_folder, new_osti_pubs):
+def process_new_osti_pdfs(args, creds, elements_conn, log_folder, new_osti_pubs):
     successful_new_pubs = [p for p in new_osti_pubs if p['response_success']]
+
+    if not successful_new_pubs:
+        print("\nNo successful submissions, so we're not sending any PDFs.")
+        return False
+
+    print("\nSubmitting PDFs for successfully-added new pubs.")
+    new_osti_pubs_with_pdf_responses = elink_2.submit_new_pdfs(successful_new_pubs, creds['osti_api'])
+
+    print("\nUpdating eSchol OSTI DB with media responses"
+          "\n(Note: Failure codes will be saved to the eSchol DB if received)")
+    eschol.update_new_submissions_with_pdfs(new_osti_pubs_with_pdf_responses, creds['eschol_db_write'])
+
+    return new_osti_pubs_with_pdf_responses
 
 
 # =======================================
 # Metadata updates
-def handle_metadata_updates(args, creds, elements_conn, log_folder):
+def process_metadata_updates(args, creds, elements_conn, log_folder):
 
     print("\nQuerying for modified OSTI pubs.")
     osti_metadata_updates = elements.get_osti_metadata_updates(elements_conn, args)
@@ -145,38 +207,39 @@ def handle_metadata_updates(args, creds, elements_conn, log_folder):
         print("No OSTI pubs with modified metadata. Proceeding.")
         return False
 
+    print(f"\n{len(osti_metadata_updates)} Modified publications for updating.")
+    if len(osti_metadata_updates) > submission_limit:
+        print(f"Truncating new pub list to submission limit ({submission_limit})")
+        osti_metadata_updates = osti_metadata_updates[submission_limit:]
+
+    # Transform metadata updates for submission
+    osti_metadata_updates = transform_pubs_v2.add_osti_data_v2(osti_metadata_updates, args.test)
+
+    # Log metadata updates
+    write_logs.output_submissions(
+        log_folder, osti_metadata_updates, args.elink_version, "UPDATE-METADATA")
+
+    # Submit updated metadata to OSTI
+    osti_metadata_updates = elink_2.submit_metadata_updates(osti_metadata_updates, creds['osti_api'])
+
+    # Log OSTI API responses; Output pub objects with responses
+    write_logs.output_json_generic(
+        log_folder, osti_metadata_updates, args.elink_version, "v2-update-responses")
+
+    # Update eSchol OSTI DB with new successful submissions
+    successful_metadata_updates = [pub for pub in osti_metadata_updates if pub['response_success'] is True]
+    if len(successful_metadata_updates) == 0:
+        print("No successful metadata updates. Proceeding.")
     else:
-        print(f"\n{len(osti_metadata_updates)} Modified publications for updating:\n")
+        print("\nWriting successful metadata updates to eschol osti db.")
+        eschol.update_osti_db_metadata(successful_metadata_updates, creds['eschol_db_write'])
 
-        # Transform metadata updates for submission
-        osti_metadata_updates = transform_pubs_v2.add_osti_data_v2(osti_metadata_updates, args.test)
-
-        # Log metadata updates
-        write_logs.output_submissions(
-            log_folder, osti_metadata_updates, args.elink_version, "UPDATE-METADATA")
-
-        # Submit updated metadata to OSTI
-        osti_metadata_updates = elink_2.submit_metadata_updates(
-            osti_metadata_updates, creds['osti_api'], submission_limit)
-
-        # Log OSTI API responses; Output pub objects with responses
-        write_logs.output_json_generic(
-            log_folder, osti_metadata_updates, args.elink_version, "v2-update-responses")
-
-        # Update eSchol OSTI DB with new successful submissions
-        successful_metadata_updates = [pub for pub in osti_metadata_updates if pub['response_success'] is True]
-        if len(successful_metadata_updates) == 0:
-            print("No successful metadata updates. Proceeding.")
-        else:
-            print("Writing metadata updates to eschol osti db.")
-            eschol.update_osti_db_metadata(successful_metadata_updates, creds['eschol_db_write'])
-
-        return osti_metadata_updates
+    return osti_metadata_updates
 
 
 # =======================================
 # PDF updates
-def handle_pdf_updates(args, creds, elements_conn, log_folder):
+def process_pdf_updates(args, creds, elements_conn, log_folder):
 
     print("\nQuerying for replaced PDF files.")
     osti_media_updates = elements.get_osti_media_updates(elements_conn, args)
@@ -185,11 +248,50 @@ def handle_pdf_updates(args, creds, elements_conn, log_folder):
         print("No replaced PDFs to resubmit. Proceeding.")
         return False
 
-    else:
-        print(osti_media_updates)
-        elink_2.submit_media_updates(osti_media_updates, creds['osti_api'], submission_limit)
+    # print(osti_media_updates)
+    elink_2.submit_media_updates(osti_media_updates, creds['osti_api'], submission_limit)
 
-    return osti_media_updates
+    # for testing
+    return False
+    # return osti_media_updates
+
+
+# =======================================
+def print_final_report(new_osti_pubs, new_osti_pdfs, osti_metadata_updates, osti_pdf_updates):
+    def report_builder(pubs, message, success_field, failure_json_field):
+        print("\n--------------------")
+        if not pubs:
+            print(f"No {message}")
+        else:
+            success = [p for p in pubs if p[success_field]]
+            failure = [p for p in pubs if not p[success_field]]
+
+            print(f"{len(pubs)} total {message}")
+            if success:
+                print(f"{len(success)} successful submissions (Elements IDs):")
+                for s in success:
+                    print(s['id'])
+            if failure:
+                print(f"\n{len(failure)} failed submissions:")
+                for f in failure:
+                    print(f"\n{f['id']}")
+                    print(f[failure_json_field])
+
+    print("\n\n========================================"
+          "\nFINAL REPORT"
+          "\n========================================\n\n")
+
+    report_builder(new_osti_pubs, "new pubs sent to OSTI.",
+                   'response_success', 'response_json')
+
+    report_builder(new_osti_pdfs, "PDFs submitted for newly-added publications.",
+                   'media_response_success', 'media_response_json')
+
+    report_builder(osti_metadata_updates, "pubs with updated metadata sent to OSTI.",
+                   'response_success', 'response_json')
+
+    report_builder(osti_pdf_updates, "replacement PDFs sent to OSTI.",
+                   'media_response_success', 'media_response_json')
 
 
 # =======================================
