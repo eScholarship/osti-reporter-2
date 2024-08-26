@@ -1,10 +1,10 @@
 # Program modules
 import program_setup
 import write_logs
-import eschol_db_functions as eschol
+import local_osti_submission_db_functions as eschol
 import elements_db_functions as elements
 import transform_pubs
-import submit_pubs as elink_2
+import elink_2_functions as elink_2
 
 
 # Global vars
@@ -30,7 +30,7 @@ def main():
     elements_conn = elements.get_elements_connection(creds['elements_reporting_db'])
 
     # eSchol OSTI DB --> Elements temp table
-    transfer_temp_table(creds, elements_conn, log_folder)
+    transfer_temp_table(args, creds, elements_conn, log_folder)
 
     # ---------- E-Link 1
     if args.elink_version == 1 and not args.test_updates:
@@ -58,16 +58,22 @@ def main():
 
 
 # =======================================
-def transfer_temp_table(creds, elements_conn, log_folder):
+def transfer_temp_table(args, creds, elements_conn, log_folder):
     # Get the data from the eschol_osti db
     osti_eschol_db_pubs = eschol.get_eschol_osti_db(creds['eschol_db_read'])
 
-    # Create the temp table .SQL, and log it
+    # Create the temp table SQL
     temp_table_query = elements.generate_temp_table_sql(osti_eschol_db_pubs)
-    write_logs.output_temp_table_query(log_folder, temp_table_query)
+
+    if args.full_logging:
+        write_logs.output_temp_table_query(log_folder, temp_table_query)
 
     # Create temp table in Elements
-    elements.create_temp_table_in_elements(elements_conn, temp_table_query, log_folder)
+    elements.create_temp_table_in_elements(elements_conn, temp_table_query)
+
+    if args.full_logging:
+        temp_table_results = elements.get_full_temp_table(elements_conn)
+        write_logs.output_temp_table_results(log_folder, temp_table_results)
 
 
 # =======================================
@@ -88,14 +94,16 @@ def process_elink_1_pubs(args, creds, elements_conn, log_folder):
         print(f"Truncating new pub list to submission limit ({submission_limit})")
         new_osti_pubs = new_osti_pubs[submission_limit:]
 
-    # Log Elements query results
-    write_logs.output_elements_query_results(log_folder, new_osti_pubs)
+    # Full elements query results
+    if args.full_logging:
+        write_logs.output_elements_query_results(log_folder, new_osti_pubs)
 
     # Add the OSTI-specific submission XMLs
     new_osti_pubs = transform_pubs_v1.add_osti_data_v1(new_osti_pubs, args.test)
 
-    # Log transformed submissions
-    write_logs.output_submissions(log_folder, new_osti_pubs, args.elink_version)
+    # Transformed submissions
+    if args.full_logging:
+        write_logs.output_submissions(log_folder, new_osti_pubs, args.elink_version)
 
     # If running in test mode, skip the submission step.
     if args.test:
@@ -106,8 +114,8 @@ def process_elink_1_pubs(args, creds, elements_conn, log_folder):
     # Otherwise, send the submission XMLs to the OSTI API.
     new_osti_pubs = elink_1.submit_pubs(new_osti_pubs, creds['osti_api'], submission_limit)
 
-    # Output pub objects with responses
-    write_logs.output_json_generic(log_folder, new_osti_pubs, args.elink_version, "v1-responses")
+    # Output pub objects with submissions and responses
+    write_logs.output_json_generic(log_folder, new_osti_pubs, args.elink_version, "v1-submissions-and-responses")
 
     # Update eSchol OSTI DB with new successful submissions
     successful_submissions = [pub for pub in new_osti_pubs if pub['response_success'] is True]
@@ -138,13 +146,15 @@ def process_new_osti_pubs(args, creds, elements_conn, log_folder):
         new_osti_pubs = new_osti_pubs[submission_limit:]
 
     # Log Elements query results
-    write_logs.output_elements_query_results(log_folder, new_osti_pubs)
+    if args.full_logging:
+        write_logs.output_elements_query_results(log_folder, new_osti_pubs)
 
     # Add the OSTI-specific submission JSONs
     new_osti_pubs = transform_pubs.add_osti_data_v2(new_osti_pubs, args.test)
 
     # Log transformed submissions
-    write_logs.output_submissions(log_folder, new_osti_pubs, args.elink_version)
+    if args.full_logging:
+        write_logs.output_submissions(log_folder, new_osti_pubs, args.elink_version)
 
     # If running in test mode, skip the submission step.
     if args.test:
@@ -155,11 +165,8 @@ def process_new_osti_pubs(args, creds, elements_conn, log_folder):
     # Otherwise, send the submission jsons to the OSTI API.
     new_osti_pubs = elink_2.submit_new_pubs(new_osti_pubs, creds['osti_api'])
 
-    # Log OSTI API responses -- TK this is handy for testing but can be removed
-    # write_logs.output_responses(log_folder, new_osti_pubs, args.elink_version)
-
     # Output pub objects with responses
-    write_logs.output_json_generic(log_folder, new_osti_pubs, args.elink_version, "v2-responses")
+    write_logs.output_json_generic(log_folder, new_osti_pubs, args.elink_version, "v2-submissions-and-responses")
 
     # Update eSchol OSTI DB with new successful submissions
     successful_submissions = [
@@ -213,15 +220,16 @@ def process_metadata_updates(args, creds, elements_conn, log_folder):
     osti_metadata_updates = transform_pubs.add_osti_data_v2(osti_metadata_updates, args.test)
 
     # Log metadata updates
-    write_logs.output_submissions(
-        log_folder, osti_metadata_updates, args.elink_version, "UPDATE-METADATA")
+    if args.full_logging:
+        write_logs.output_submissions(
+            log_folder, osti_metadata_updates, args.elink_version, "UPDATE-METADATA")
 
     # Submit updated metadata to OSTI
     osti_metadata_updates = elink_2.submit_metadata_updates(osti_metadata_updates, creds['osti_api'])
 
     # Log OSTI API responses; Output pub objects with responses
     write_logs.output_json_generic(
-        log_folder, osti_metadata_updates, args.elink_version, "v2-update-responses")
+        log_folder, osti_metadata_updates, args.elink_version, "v2-update-submissions-and-responses")
 
     # Update eSchol OSTI DB with new successful submissions
     successful_metadata_updates = [

@@ -25,14 +25,9 @@ def get_elements_connection(sql_creds):
 
 # --------------------------
 # Make the temp table in elements
-def create_temp_table_in_elements(conn, temp_table_query, log_folder):
+def create_temp_table_in_elements(conn, temp_table_query):
     cursor = conn.cursor()
-
-    # Execute the temp table query in Elements
     cursor.execute(temp_table_query)
-
-    # Log the Elements temp table output.
-    write_logs.output_temp_table_results(log_folder, get_full_temp_table(cursor))
 
 
 # --------------------------
@@ -113,6 +108,8 @@ def generate_temp_table_sql(osti_eschol_db):
             row['eschol_pr_modified_when'] = row['eschol_pr_modified_when'].strftime('%Y-%m-%d %H:%M:%S.%f')
             row['eschol_pr_modified_when'] = row['eschol_pr_modified_when'][:-3]
 
+        # https://stackoverflow.com/questions/29380383/python-pypyodbc-row-insert-using-string-and-nulls/29419430#29419430
+
         row = convert_nulls_for_sql(row)
         value_strings.append(
             (f"""(
@@ -143,7 +140,8 @@ def generate_temp_table_sql(osti_eschol_db):
 
 
 # --------------------------
-def get_full_temp_table(cursor):
+def get_full_temp_table(conn):
+    cursor = conn.cursor()
     cursor.execute("SELECT * FROM #osti_submitted;")
     columns = [column[0] for column in cursor.description]
     rows = [dict(zip(columns, row)) for row in cursor.fetchall()]

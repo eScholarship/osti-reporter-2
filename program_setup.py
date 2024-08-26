@@ -58,6 +58,12 @@ def process_args():
                         default=False,
                         help="Skips ordinary submission step and jumps to update steps.")
 
+    parser.add_argument("-fl", "--full-logging",
+                        dest="full_logging",
+                        action="store_true",
+                        default=False,
+                        help="Outputs: Temp table sql query and results; Submission and response files.")
+
     return parser.parse_args()
 
 
