@@ -63,13 +63,13 @@ def transfer_temp_table(args, creds, elements_conn, log_folder):
     osti_eschol_db_pubs = eschol.get_eschol_osti_db(creds['eschol_db_read'])
 
     # Create the temp table SQL
-    temp_table_query = elements.generate_temp_table_sql(osti_eschol_db_pubs)
-
-    if args.full_logging:
-        write_logs.output_temp_table_query(log_folder, temp_table_query)
+    # temp_table_query = elements.generate_temp_table_sql(osti_eschol_db_pubs)
+    #
+    # if args.full_logging:
+    #     write_logs.output_temp_table_query(log_folder, temp_table_query)
 
     # Create temp table in Elements
-    elements.create_temp_table_in_elements(elements_conn, temp_table_query)
+    elements.create_temp_table_in_elements(elements_conn, osti_eschol_db_pubs)
 
     if args.full_logging:
         temp_table_results = elements.get_full_temp_table(elements_conn)

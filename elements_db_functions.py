@@ -25,14 +25,77 @@ def get_elements_connection(sql_creds):
 
 # --------------------------
 # Make the temp table in elements
-def create_temp_table_in_elements(conn, temp_table_query):
+def create_temp_table_in_elements(conn, osti_submitted_db):
+
+    # Helper -- returns an array of arrays of the specified size
+    def get_osti_eschol_chunks(osdb, chunk_size=500):
+        chunks = []
+        while len(osdb) >= chunk_size:
+            chunk = osdb[:chunk_size]
+            chunks.append(chunk)
+            del osdb[:chunk_size]
+        chunks.append(osdb)
+        return chunks
+
+    # Helper -- MSSQL only accepts datetime/timestamp with 3 digits of fractional time
+    def format_datetime_for_mssql(dt):
+        if dt is not None:
+            dt = dt.strftime('%Y-%m-%d %H:%M:%S.%f')
+            dt = dt[:-3]
+        return dt
+
+    # Main work starts here
+    print("Creating temp table with submitted OSTI data.")
+
+    # Load SQL file
+    try:
+        sql_file = open("sql_files/create_temp_table_in_elements.sql")
+        create_temp_table_sql = sql_file.read()
+    except Exception as e:
+        print("ERROR WHILE OPENING OR READING SQL FILE.")
+        raise e
+
     cursor = conn.cursor()
-    cursor.execute(temp_table_query)
+    cursor.execute(create_temp_table_sql)
+
+    cursor.fast_executemany = True  # enables bulk inserting in executemany
+    osti_submitted_db_chunks = get_osti_eschol_chunks(osti_submitted_db)
+    for i, chunk in enumerate(osti_submitted_db_chunks, 1):
+        print(f"inserting chunk {i} / {len(osti_submitted_db_chunks)}")
+
+        insert_sql = '''INSERT INTO #osti_submitted (
+            osti_id,
+            elements_id,
+            doi,
+            eschol_id,
+            eschol_pr_modified_when,
+            prf_filename,
+            prf_size,
+            media_response_code,
+            media_id,
+            media_file_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) '''
+
+        insert_values = [
+            [row['osti_id'],
+             row['elements_id'],
+             row['doi'],
+             row['eschol_id'],
+             format_datetime_for_mssql(row['eschol_pr_modified_when']),
+             row['prf_filename'],
+             row['prf_size'],
+             row['media_response_code'],
+             row['media_id'],
+             row['media_file_id']
+             ] for row in chunk]
+
+        cursor.executemany(insert_sql, insert_values)
 
 
 # --------------------------
 # Query the Elements DB, find pubs which need to be sent.
 def get_new_osti_pubs(conn, args):
+    cursor = conn.cursor()
 
     # Load SQL file
     try:
@@ -44,7 +107,6 @@ def get_new_osti_pubs(conn, args):
 
     print("Executing query to retrieve new OSTI pubs.")
     sql_query = replace_url_variable_values(args.input_qa, sql_query)
-    cursor = conn.cursor()
     cursor.execute(sql_query)
 
     # pyodbc doesn't return dicts automatically, we have to make them ourselves
@@ -52,91 +114,6 @@ def get_new_osti_pubs(conn, args):
     rows = [dict(zip(columns, row)) for row in cursor.fetchall()]
 
     return rows
-
-
-# --------------------------
-def generate_temp_table_sql(osti_eschol_db):
-    print("Creating temp table with submitted OSTI data.")
-
-    temp_table = '''
-        BEGIN TRANSACTION 
-        CREATE TABLE #osti_submitted (
-            osti_id INT,
-            elements_id INT,
-            doi VARCHAR(80),
-            eschol_id VARCHAR(80),
-            eschol_pr_modified_when DATETIME,
-            prf_filename VARCHAR(200),
-            prf_size BIGINT,
-            media_response_code INT,
-            media_id INT,
-            media_file_id INT
-        );
-        COMMIT TRANSACTION
-        GO;
-        '''
-
-    transaction_header = '''
-        BEGIN TRANSACTION
-        INSERT INTO #osti_submitted (
-            osti_id,
-            elements_id,
-            doi,
-            eschol_id,
-            eschol_pr_modified_when,
-            prf_filename,
-            prf_size,
-            media_response_code,
-            media_id,
-            media_file_id)
-        VALUES
-        '''
-
-    transaction_footer = '''
-        COMMIT TRANSACTION
-        GO;
-        '''
-
-    temp_table += transaction_header
-    value_strings = []
-    insert_limit = 500
-
-    for index, row in enumerate(osti_eschol_db, 1):
-
-        # MSSQL only accepts datetime/timestamp with 3 digits of fractional time
-        if row['eschol_pr_modified_when'] is not None:
-            row['eschol_pr_modified_when'] = row['eschol_pr_modified_when'].strftime('%Y-%m-%d %H:%M:%S.%f')
-            row['eschol_pr_modified_when'] = row['eschol_pr_modified_when'][:-3]
-
-        # https://stackoverflow.com/questions/29380383/python-pypyodbc-row-insert-using-string-and-nulls/29419430#29419430
-
-        row = convert_nulls_for_sql(row)
-        value_strings.append(
-            (f"""(
-            {row['osti_id']},
-            {row['elements_id']},
-            '{row['doi']}',
-            '{row['eschol_id']}',
-            '{row['eschol_pr_modified_when']}',
-            '{row['prf_filename']}',
-            {row['prf_size']},
-            {row['media_response_code']},
-            {row['media_id']},
-            {row['media_file_id']})"""
-             ).replace("'Null'", 'Null')
-        )
-
-        if index % insert_limit == 0:
-            temp_table += ",\n".join(value_strings)
-            value_strings = []
-            temp_table += transaction_footer
-            temp_table += transaction_header
-
-        elif index == (len(osti_eschol_db)):
-            temp_table += ",\n".join(value_strings)
-            temp_table += transaction_footer
-
-    return temp_table
 
 
 # --------------------------
@@ -210,15 +187,3 @@ def get_osti_media_updates(conn, args):
     rows = [dict(zip(columns, row)) for row in cursor.fetchall()]
 
     return rows
-
-
-def convert_nulls_for_sql(pub):
-    converted_pub = {}
-
-    for k, v in pub.items():
-        if v is None or v == "None" or v == "":
-            converted_pub[k] = "Null"
-        else:
-            converted_pub[k] = pub[k]
-
-    return converted_pub
