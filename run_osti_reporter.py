@@ -42,8 +42,10 @@ def main():
             new_osti_pubs = process_new_osti_pubs(args, creds, elements_conn, log_folder)
             new_osti_pdfs = process_new_osti_pdfs(args, creds, elements_conn, log_folder, new_osti_pubs)
 
-        if args.send_updates:
+        if args.metadata_updates or args.individual_updates:
             osti_metadata_updates = process_metadata_updates(args, creds, elements_conn, log_folder)
+
+        if args.pdf_updates or args.individual_updates:
             osti_pdf_updates = process_pdf_updates(args, creds, elements_conn, log_folder)
 
     # Prints a digest of completed work
@@ -61,12 +63,6 @@ def main():
 def transfer_temp_table(args, creds, elements_conn, log_folder):
     # Get the data from the eschol_osti db
     osti_eschol_db_pubs = eschol.get_eschol_osti_db(creds['eschol_db_read'])
-
-    # Create the temp table SQL
-    # temp_table_query = elements.generate_temp_table_sql(osti_eschol_db_pubs)
-    #
-    # if args.full_logging:
-    #     write_logs.output_temp_table_query(log_folder, temp_table_query)
 
     # Create temp table in Elements
     elements.create_temp_table_in_elements(elements_conn, osti_eschol_db_pubs)
@@ -284,14 +280,15 @@ def print_final_report(new_osti_pubs, new_osti_pdfs, osti_metadata_updates, osti
             failure = [p for p in pubs if not p[success_field]]
 
             print(f"{len(pubs)} total {message}")
+            print(f"{len(success) or 0} successes, {len(failure) or 0} failures.")
 
             if success:
-                print(f"\n{len(success)} successful submissions (Elements IDs):")
+                print(f"\n{len(success)} successful submission(s):")
                 for s in success:
                     print(s['id'])
 
             if failure:
-                print(f"\n{len(failure)} failed submissions:")
+                print(f"\n{len(failure)} failed submission(s):")
                 for f in failure:
                     print(f"\n{f['id']}")
                     print(f[failure_json_field])

@@ -32,13 +32,27 @@ def process_args():
                         default=False,
                         help="Optional. Include to run the connection through a tunnel.")
 
-    parser.add_argument("-u", "--updates",
-                        dest="send_updates",
+    parser.add_argument("-mu", "--metadata-updates",
+                        dest="metadata_updates",
                         action="store_true",
                         default=False,
-                        help="Optional. If this flag is included, the program will send updates to OSTI \
-                            for publications already in their database. Default is FALSE, e.g. only \
-                            new publications are sent.")
+                        help="Optional. If this flag is included, the program will send metadata updates \
+                            to OSTI for publications already in their database. Default is FALSE.")
+
+    parser.add_argument("-pu", "--pdf-updates",
+                        dest="pdf_updates",
+                        action="store_true",
+                        default=False,
+                        help="Optional. If this flag is included, the program will send updated PDFs \
+                            to OSTI for publications already in their database. Default is FALSE.")
+
+    parser.add_argument("-iu", "--individual-updates",
+                        dest="individual_updates",
+                        type=int,
+                        default=[],
+                        nargs="+",
+                        help="Optional. Use this flag to specify individual publication IDs for \
+                            updates. Example: -iu 1234567 0129384 6592834")
 
     parser.add_argument("-v", "--version",
                         dest="elink_version",
@@ -136,7 +150,7 @@ def assign_creds(args):
     # eSchol MySQL for input (read)
     if args.input_qa:
         selected_creds['eschol_db_read'] = {
-            'host': os.environ['ESCHOL_OSTI_DB_QA_HOST'],
+            'host': os.environ['ESCHOL_OSTI_DB_QA_SERVER'],
             'database': os.environ['ESCHOL_OSTI_DB_QA_DATABASE'],
             'user': os.environ['ESCHOL_OSTI_DB_QA_USER'],
             'password': os.environ['ESCHOL_OSTI_DB_QA_PASSWORD'],
@@ -145,7 +159,7 @@ def assign_creds(args):
 
     else:
         selected_creds['eschol_db_read'] = {
-            'host': os.environ['ESCHOL_OSTI_DB_PROD_HOST'],
+            'host': os.environ['ESCHOL_OSTI_DB_PROD_SERVER'],
             'database': os.environ['ESCHOL_OSTI_DB_PROD_DATABASE'],
             'user': os.environ['ESCHOL_OSTI_DB_PROD_USER'],
             'password': os.environ['ESCHOL_OSTI_DB_PROD_PASSWORD'],
@@ -155,7 +169,7 @@ def assign_creds(args):
     # eSchol MySQL for output (write)
     if args.output_qa:
         selected_creds['eschol_db_write'] = {
-            'host': os.environ['ESCHOL_OSTI_DB_QA_HOST'],
+            'host': os.environ['ESCHOL_OSTI_DB_QA_SERVER'],
             'database': os.environ['ESCHOL_OSTI_DB_QA_DATABASE'],
             'user': os.environ['ESCHOL_OSTI_DB_QA_USER'],
             'password': os.environ['ESCHOL_OSTI_DB_QA_PASSWORD'],
@@ -164,7 +178,7 @@ def assign_creds(args):
 
     else:
         selected_creds['eschol_db_write'] = {
-            'host': os.environ['ESCHOL_OSTI_DB_PROD_HOST'],
+            'host': os.environ['ESCHOL_OSTI_DB_PROD_SERVER'],
             'database': os.environ['ESCHOL_OSTI_DB_PROD_DATABASE'],
             'user': os.environ['ESCHOL_OSTI_DB_PROD_USER'],
             'password': os.environ['ESCHOL_OSTI_DB_PROD_PASSWORD'],

@@ -80,4 +80,10 @@ WHERE
 	        (os.[prf_filename] != prf.[Filename] OR os.[prf_size] != prf.[Size])
 	        OR
 	        (os.[media_response_code] IS NOT NULL AND os.[media_response_code] > 300)
-	    );
+	    )
+
+	-- INDIVIDUAL UPDATES PUB ID LIST REPLACE
+
+	;
+
+COMMIT TRANSACTION;

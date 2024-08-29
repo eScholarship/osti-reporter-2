@@ -142,6 +142,15 @@ def replace_url_variable_values(input_qa, sql_query):
 
 
 # --------------------------
+def add_individual_update_where_clause(id_list, sql_query):
+    id_list = [str(i) for i in id_list]
+    id_list_joined = ', '.join(id_list)
+    where_clause = f"AND p.[ID] in ({id_list_joined})"
+    sql_query = sql_query.replace("-- INDIVIDUAL UPDATES PUB ID LIST REPLACE", where_clause)
+    return sql_query
+
+
+# --------------------------
 # Get OSTI-submitted items who've had metadata updates.
 def get_osti_metadata_updates(conn, args):
 
@@ -153,8 +162,13 @@ def get_osti_metadata_updates(conn, args):
         print("ERROR WHILE OPENING OR READING SQL FILE")
         raise e
 
-    print("Executing query to retrieve updated OSTI pub metadata.")
+    print("Adjusting SQL query for specified db input.")
     sql_query = replace_url_variable_values(args.input_qa, sql_query)
+    if args.individual_updates:
+        print(f"Individual pubs specified: {args.individual_updates}")
+        sql_query = add_individual_update_where_clause(args.individual_updates, sql_query)
+
+    print("Executing query to retrieve updated OSTI pub metadata.")
     cursor = conn.cursor()
     cursor.execute(sql_query)
 
@@ -177,8 +191,12 @@ def get_osti_media_updates(conn, args):
         print("ERROR WHILE OPENING OR READING SQL FILE.")
         raise e
 
-    print("Executing query to retrieve updated OSTI pub PDFs.")
+    print("Adjusting SQL query for specified db input.")
     sql_query = replace_url_variable_values(args.input_qa, sql_query)
+    if args.individual_updates:
+        sql_query = add_individual_update_where_clause(args.individual_updates, sql_query)
+
+    print("Executing query to retrieve updated OSTI pub PDFs.")
     cursor = conn.cursor()
     cursor.execute(sql_query)
 

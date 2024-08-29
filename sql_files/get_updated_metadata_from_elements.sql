@@ -227,6 +227,8 @@ WHERE
 	    or prf.[Embargo Release Date] < GETDATE()
     )
 
+    -- INDIVIDUAL UPDATES PUB ID LIST REPLACE
+
 GROUP BY
 	p.id,
 	p.title,
