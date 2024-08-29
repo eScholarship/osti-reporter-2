@@ -8,3 +8,5 @@ submission_comparison/
 Working Files/OSTI v1 record submission examples/
 /venv/
 logs/*
+media_test
+.env

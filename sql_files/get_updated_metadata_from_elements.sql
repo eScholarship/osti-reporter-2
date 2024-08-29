@@ -1,3 +1,6 @@
+SET TRANSACTION ISOLATION LEVEL SNAPSHOT;
+BEGIN TRANSACTION;
+
 -- Fiscal year calculation
 DECLARE @fiscal_year_cutoff date =
 	CASE WHEN (MONTH(GETDATE()) >= 10)
@@ -5,14 +8,17 @@ DECLARE @fiscal_year_cutoff date =
         ELSE CONVERT(VARCHAR, YEAR(GETDATE()) - 2) + '-10-01'
 	END;
 
+-- Changeover to E-Link v2, date cutoff for metadata updates
+-- DECLARE @elink_2_start datetime = '2024-08-01 00:00:00'
+
 -- Elements and eScholarship URLs, values replaced in elements_db_functions.get_new_osti_pubs.py
 DECLARE @elements_pub_url VARCHAR(120) = 'ELEMENTS_PUB_URL_REPLACE';
 DECLARE @eschol_files_url VARCHAR(120) = 'ESCHOL_FILES_URL_REPLACE';
 
 -- Main query
 SELECT DISTINCT
-	os.[doi] AS [OSTI doi],
-	os.[eschol_id] AS [OSTI eschol_id],
+    os.[osti_id],
+    os.[eschol_id] AS [OSTI eschol_id],
     p.id,
  	CONCAT(@elements_pub_url, p.id) as [Elements URL],
 	p.title,
@@ -154,28 +160,28 @@ FROM
  		AND u.[Primary Group Descriptor] LIKE '%lbl%'
 
 	-- Has an eScholarship pub record...
-    -- If the pub has multiple eSchol pub records, select only the most recent.
-        JOIN (SELECT
-            inner_pr.id,
-            inner_pr.[Data Source Proprietary ID],
-            inner_pr.[Publication ID],
-            inner_pr.[doi],
-            inner_pr.[volume],
-            inner_pr.[issue],
-            inner_pr.[abstract],
-            inner_pr.[publication-date],
-            inner_pr.[online-publication-date],
-            inner_pr.[public-url],
-            inner_pr.[Modified When],
-            ROW_NUMBER() OVER (
-                partition BY inner_pr.[Publication ID]
-                ORDER BY inner_pr.id desc) as pr_id_rank
-            FROM [Publication Record] inner_pr
-            WHERE inner_pr.[Data Source] = 'escholarship'
-                AND inner_pr.[Created When] >= @fiscal_year_cutoff
-        ) pr
-        on p.id = pr.[Publication ID]
-        and pr.pr_id_rank = 1
+    -- (select only the most recent if there's multiple)
+    JOIN (SELECT
+        inner_pr.id,
+        inner_pr.[Data Source Proprietary ID],
+        inner_pr.[Publication ID],
+        inner_pr.[doi],
+        inner_pr.[volume],
+        inner_pr.[issue],
+        inner_pr.[abstract],
+        inner_pr.[publication-date],
+        inner_pr.[online-publication-date],
+        inner_pr.[public-url],
+        inner_pr.[Modified When],
+        ROW_NUMBER() OVER (
+            partition BY inner_pr.[Publication ID]
+            ORDER BY inner_pr.id desc) as pr_id_rank
+        FROM [Publication Record] inner_pr
+        WHERE inner_pr.[Data Source] = 'escholarship'
+            AND inner_pr.[Created When] >= @fiscal_year_cutoff
+    ) pr
+    on p.id = pr.[Publication ID]
+    and pr.pr_id_rank = 1
 
 	-- ...with a file attached.
 	-- Note: Cut for "supp" ensures only one prf per publication record.
@@ -187,13 +193,19 @@ FROM
 		AND prf.[Proprietary ID] NOT LIKE ('%/supp/%')
 
 	-- LEFT JOIN to the temp table, thus including #osti_submitted NULLs
-	LEFT JOIN #osti_submitted os
+	JOIN #osti_submitted os
 		ON os.[doi] = pr.[doi]
 		OR os.[eschol_id] = pr.[Data Source Proprietary ID]
+		OR os.[elements_id] = p.[ID]
 
 WHERE
+
+	-- is already sent to OSTI and the pub record has been modified
+    (os.[eschol_pr_modified_when] IS NOT NULL
+    AND pr.[Modified When] > os.[eschol_pr_modified_when])
+	
     -- Only certain publication types
-	p.[Type] IN (
+	AND p.[Type] IN (
 	    'Book',
         'Chapter',
         'Conference papers',
@@ -202,10 +214,6 @@ WHERE
         'Poster',
         'Report'
     )
-
-	-- Not already sent to OSTI
-    AND os.[doi] IS NULL
-	AND os.[eschol_id] IS NULL
 
 	-- Is within one fiscal year
 	AND (
@@ -218,6 +226,8 @@ WHERE
 	    prf.[Embargo Release Date] IS NULL
 	    or prf.[Embargo Release Date] < GETDATE()
     )
+
+    -- INDIVIDUAL UPDATES PUB ID LIST REPLACE
 
 GROUP BY
 	p.id,
@@ -247,7 +257,11 @@ GROUP BY
 	prf.[File Extension],
 	prf.[Size],
 	os.[doi],
-	os.[eschol_id]
+	os.[osti_id],
+	os.[eschol_id],
+	os.[eschol_pr_modified_when]
 
 ORDER BY
 	p.id;
+
+COMMIT TRANSACTION;
