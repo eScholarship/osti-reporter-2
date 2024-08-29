@@ -280,7 +280,7 @@ def print_final_report(new_osti_pubs, new_osti_pdfs, osti_metadata_updates, osti
             failure = [p for p in pubs if not p[success_field]]
 
             print(f"{len(pubs)} total {message}")
-            print(f"{len(success) or 0} successes, {len(failure) or 0} failures.")
+            print(f"{len(success)} successes, {len(failure)} failures.")
 
             if success:
                 print(f"\n{len(success)} successful submission(s):")
