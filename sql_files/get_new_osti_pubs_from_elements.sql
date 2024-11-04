@@ -1,3 +1,6 @@
+SET TRANSACTION ISOLATION LEVEL SNAPSHOT
+BEGIN TRANSACTION;
+
 -- Fiscal year calculation
 DECLARE @fiscal_year_cutoff date =
 	CASE WHEN (MONTH(GETDATE()) >= 10)
@@ -251,3 +254,5 @@ GROUP BY
 
 ORDER BY
 	p.id;
+
+COMMIT TRANSACTION;

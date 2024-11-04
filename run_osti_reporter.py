@@ -251,7 +251,8 @@ def process_pdf_updates(args, creds, elements_conn, log_folder):
         print("No updated PDFs for resubmission. Proceeding.")
         return False
 
-    print("\nSubmitting updated PDFs to OSTI:")
+    print(f"\n{len(osti_media_updates)} Modified media files for updating.")
+    print("\nSubmitting updated PDFs to OSTI.")
     elink_2.submit_media_updates(osti_media_updates, creds['osti_api'])
 
     print("\nUpdating eSchol OSTI DB with updated media responses"
