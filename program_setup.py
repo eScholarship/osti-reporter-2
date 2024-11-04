@@ -1,6 +1,5 @@
 def process_args():
     import argparse
-
     parser = argparse.ArgumentParser()
 
     def validate_elink_version(arg):
@@ -78,138 +77,77 @@ def process_args():
                         default=False,
                         help="Outputs: Temp table sql query and results; Submission and response files.")
 
-    return parser.parse_args()
+    parser.add_argument("-oco", "--output-concurrence-override",
+                        dest="output_override",
+                        action="store_true",
+                        default=False,
+                        help="A Safeguard -- must be added if sending -eq and -oq to different connections.")
+
+    args = parser.parse_args()
+
+    if (args.output_qa != args.elink_qa) and not args.output_override:
+        raise RuntimeError("SAFETY CHECK!!! --elink-qa and --output-qa do not match. "
+                           "Run with -oco if this is actually intended. Exiting.")
+
+    return args
 
 
 def assign_creds(args):
-    import os
-    from dotenv import load_dotenv
-    load_dotenv()
+    from dotenv import dotenv_values
+    env = dotenv_values(".env")
+
+    # Arg switches
+    input_cnx = "_QA" if args.input_qa else "_PROD"
+    elink_cnx = "_QA" if args.elink_qa else "_PROD"
+    output_cnx = "_QA" if args.output_qa else "_PROD"
 
     selected_creds = {}
 
     # Elements reporting db MSSQL
-    if args.input_qa:
-        selected_creds['elements_reporting_db'] = {
-            'user': os.environ['ELEMENTS_REPORTING_DB_QA_USER'],
-            'password': os.environ['ELEMENTS_REPORTING_DB_QA_PASSWORD'],
-            'server': os.environ['ELEMENTS_REPORTING_DB_QA_SERVER'],
-            'port': os.environ['ELEMENTS_REPORTING_DB_QA_PORT'],
-            'database': os.environ['ELEMENTS_REPORTING_DB_QA_DATABASE'],
-            'driver': os.environ['ELEMENTS_REPORTING_DB_QA_DRIVER']
-        }
-
-    else:
-        selected_creds['elements_reporting_db'] = {
-            'user': os.environ['ELEMENTS_REPORTING_DB_PROD_USER'],
-            'password': os.environ['ELEMENTS_REPORTING_DB_PROD_PASSWORD'],
-            'server': os.environ['ELEMENTS_REPORTING_DB_PROD_SERVER'],
-            'port': os.environ['ELEMENTS_REPORTING_DB_PROD_PORT'],
-            'database': os.environ['ELEMENTS_REPORTING_DB_PROD_DATABASE'],
-            'driver': os.environ['ELEMENTS_REPORTING_DB_PROD_DRIVER']
-        }
-
-    import creds
+    selected_creds['elements_reporting_db'] = {
+        'user': env['ELEMENTS_REPORTING_DB_USER' + input_cnx],
+        'password': env['ELEMENTS_REPORTING_DB_PASSWORD' + input_cnx],
+        'server': env['ELEMENTS_REPORTING_DB_SERVER' + input_cnx],
+        'port': env['ELEMENTS_REPORTING_DB_PORT' + input_cnx],
+        'database': env['ELEMENTS_REPORTING_DB_DATABASE' + input_cnx],
+        'driver': env['ELEMENTS_REPORTING_DB_DRIVER' + input_cnx]}
 
     # SSH tunnel
-    if args.input_qa:
-        selected_creds['ssh'] = {
-            'host': os.environ['SSH_QA_HOST'],
-            'username': os.environ['SSH_QA_USERNAME'],
-            'password': os.environ['SSH_QA_PASSWORD'],
-            'remote': (os.environ['SSH_QA_REMOTE_URL'],
-                       os.environ['SSH_QA_REMOTE_PORT']),
-            'local': (os.environ['SSH_QA_LOCAL_URL'],
-                      os.environ['SSH_QA_LOCAL_PORT'])
-        }
-
-    else:
-        selected_creds['ssh'] = {
-            'host': os.environ['SSH_PROD_HOST'],
-            'username': os.environ['SSH_PROD_USERNAME'],
-            'password': os.environ['SSH_PROD_PASSWORD'],
-            'key_location': os.environ['SSH_PROD_KEY_LOCATION'],
-            'remote': (os.environ['SSH_PROD_REMOTE_URL'],
-                       os.environ['SSH_PROD_REMOTE_PORT']),
-            'local': (os.environ['SSH_PROD_LOCAL_URL'],
-                      os.environ['SSH_PROD_LOCAL_PORT'])
-        }
-
-    # Elements reporting db MSSQL
-    # if args.input_qa:
-    #     if args.tunnel_needed:
-    #         selected_creds['elements_reporting_db'] = creds.elements_reporting_db_local_qa
-    #     else:
-    #         selected_creds['elements_reporting_db'] = creds.elements_reporting_db_server_qa
-    # else:
-    #     if args.tunnel_needed:
-    #         selected_creds['elements_reporting_db'] = creds.elements_reporting_db_local_prod
-    #     else:
-    #         selected_creds['elements_reporting_db'] = creds.elements_reporting_db_server_prod
+    selected_creds['ssh'] = {
+        'host': env['SSH_HOST' + input_cnx],
+        'username': env['SSH_USERNAME' + input_cnx],
+        'password': env['SSH_PASSWORD' + input_cnx],
+        'remote': (env['SSH_REMOTE_URL' + input_cnx],
+                   env['SSH_REMOTE_PORT' + input_cnx]),
+        'local': (env['SSH_LOCAL_URL' + input_cnx],
+                  env['SSH_LOCAL_PORT' + input_cnx])}
 
     # eSchol MySQL for input (read)
-    if args.input_qa:
-        selected_creds['eschol_db_read'] = {
-            'host': os.environ['ESCHOL_OSTI_DB_QA_SERVER'],
-            'database': os.environ['ESCHOL_OSTI_DB_QA_DATABASE'],
-            'user': os.environ['ESCHOL_OSTI_DB_QA_USER'],
-            'password': os.environ['ESCHOL_OSTI_DB_QA_PASSWORD'],
-            'table': os.environ['ESCHOL_OSTI_DB_QA_TABLE']
-        }
-
-    else:
-        selected_creds['eschol_db_read'] = {
-            'host': os.environ['ESCHOL_OSTI_DB_PROD_SERVER'],
-            'database': os.environ['ESCHOL_OSTI_DB_PROD_DATABASE'],
-            'user': os.environ['ESCHOL_OSTI_DB_PROD_USER'],
-            'password': os.environ['ESCHOL_OSTI_DB_PROD_PASSWORD'],
-            'table': os.environ['ESCHOL_OSTI_DB_PROD_TABLE']
-        }
+    selected_creds['eschol_db_read'] = {
+        'host': env['ESCHOL_OSTI_DB_SERVER' + input_cnx],
+        'database': env['ESCHOL_OSTI_DB_DATABASE' + input_cnx],
+        'user': env['ESCHOL_OSTI_DB_USER' + input_cnx],
+        'password': env['ESCHOL_OSTI_DB_PASSWORD' + input_cnx],
+        'table': env['ESCHOL_OSTI_DB_TABLE' + input_cnx]}
 
     # eSchol MySQL for output (write)
-    if args.output_qa:
-        selected_creds['eschol_db_write'] = {
-            'host': os.environ['ESCHOL_OSTI_DB_QA_SERVER'],
-            'database': os.environ['ESCHOL_OSTI_DB_QA_DATABASE'],
-            'user': os.environ['ESCHOL_OSTI_DB_QA_USER'],
-            'password': os.environ['ESCHOL_OSTI_DB_QA_PASSWORD'],
-            'table': os.environ['ESCHOL_OSTI_DB_QA_TABLE']
-        }
-
-    else:
-        selected_creds['eschol_db_write'] = {
-            'host': os.environ['ESCHOL_OSTI_DB_PROD_SERVER'],
-            'database': os.environ['ESCHOL_OSTI_DB_PROD_DATABASE'],
-            'user': os.environ['ESCHOL_OSTI_DB_PROD_USER'],
-            'password': os.environ['ESCHOL_OSTI_DB_PROD_PASSWORD'],
-            'table': os.environ['ESCHOL_OSTI_DB_PROD_TABLE']
-        }
+    selected_creds['eschol_db_write'] = {
+        'host': env['ESCHOL_OSTI_DB_SERVER' + output_cnx],
+        'database': env['ESCHOL_OSTI_DB_DATABASE' + output_cnx],
+        'user': env['ESCHOL_OSTI_DB_USER' + output_cnx],
+        'password': env['ESCHOL_OSTI_DB_PASSWORD' + output_cnx],
+        'table': env['ESCHOL_OSTI_DB_TABLE' + output_cnx]}
 
     # OSTI Elink
     if args.elink_version == 1:
-        if args.elink_qa:
-            selected_creds['osti_api'] = {
-                "base_url": os.environ['OSTI_V1_QA_URL'],
-                "username": os.environ['OSTI_V1_QA_USERNAME'],
-                "password": os.environ['OSTI_V1_QA_PASSWORD']
-            }
-        else:
-            selected_creds['osti_api'] = {
-                "base_url": os.environ['OSTI_V1_PROD_URL'],
-                "username": os.environ['OSTI_V1_PROD_USERNAME'],
-                "password": os.environ['OSTI_V1_PROD_PASSWORD']
-            }
+        selected_creds['osti_api'] = {
+            "base_url": env['OSTI_V1_URL' + elink_cnx],
+            "username": env['OSTI_V1_USERNAME' + elink_cnx],
+            "password": env['OSTI_V1_PASSWORD' + elink_cnx]}
     else:
-        if args.elink_qa:
-            selected_creds['osti_api'] = {
-                "base_url": os.environ['OSTI_V2_QA_URL'],
-                "token": os.environ['OSTI_V2_QA_TOKEN']
-            }
-        else:
-            selected_creds['osti_api'] = {
-                "base_url": os.environ['OSTI_V2_PROD_URL'],
-                "token": os.environ['OSTI_V2_PROD_TOKEN']
-            }
+        selected_creds['osti_api'] = {
+            "base_url": env['OSTI_V2_URL' + elink_cnx],
+            "token": env['OSTI_V2_TOKEN' + elink_cnx]}
 
     return selected_creds
 
