@@ -1,5 +1,8 @@
 # OSTI E-Link 2 documentation https://review.osti.gov/elink2api/
 import requests
+from pprint import pprint
+import mimetypes
+from requests_toolbelt.multipart.encoder import MultipartEncoder
 
 
 # New Metadata submissions
@@ -25,8 +28,8 @@ def submit_new_pubs(pubs_for_metadata_submission, osti_creds):
 # New PDF submissions metadata without PDFs.
 def submit_new_pdfs(pubs_for_media_submission, osti_creds):
     for pub in pubs_for_media_submission:
-        print(f"\nSubmitting media: Elements ID {pub['id']}, OSTI ID {pub['osti_id']}\n"
-              f"PDF: {pub['File URL']}")
+        print(f"\nSubmitting media: Elements ID {pub['id']}, "
+              f"OSTI ID {pub['osti_id']} PDF: {pub['File URL']}")
 
         media_response = post_media(osti_creds, pub)
         pub['media_response_code'] = media_response.status_code
@@ -50,6 +53,7 @@ def submit_new_pdfs(pubs_for_media_submission, osti_creds):
 def submit_metadata_updates(updated_osti_pubs, osti_creds):
     for pub in updated_osti_pubs:
         print(f"\nSubmitting update: Elements Pub. ID: {pub['id']}, OSTI ID: {pub['osti_id']}")
+        pprint(pub)
 
         response = put_metadata(osti_creds, pub)
         pub['response_status_code'] = response.status_code
@@ -72,6 +76,8 @@ def submit_media_updates(updated_media_pubs, osti_creds):
         print(f"\nSubmitting media update: Elements ID {pub['id']}, OSTI ID {pub['osti_id']},"
               f"\nMedia ID: {pub['media_id']}, Media File ID: {pub['media_file_id']}"
               f"\nPDF: {pub['File URL']}")
+
+        pprint(pub)
 
         # A null media_id means there was an error with the first pdf submission,
         # so it requires a post() b/c no media file currently exists.
@@ -116,26 +122,48 @@ def put_metadata(osti_creds, pub):
 
 def post_media(osti_creds, pub):
     req_url = f"{osti_creds['base_url']}/media/{pub['osti_id']}"
-    params = {'url': pub['File URL'], 'title': pub['title']}
-    headers = {'Authorization': 'Bearer ' + osti_creds['token']}
 
     # Get the PDF file data from url
-    pdf_response = requests.get(pub['File URL'])
+    pdf_filename = pub['File URL'].split('/')[-1]
+    pdf_response = requests.get(pub['File URL'], stream=True)
+    pdf_response.raw.decode_content = True
+
+    mp_encoder = MultipartEncoder(
+        fields={'file': (pdf_filename, pdf_response.content, 'application/pdf')}
+    )
+
+    headers = {'Authorization': 'Bearer ' + osti_creds['token'],
+               'Content-Type': mp_encoder.content_type}
+    params = {'title': pub['title']}
+    # params = {'url': pub['File URL'], 'title': pub['title']}
 
     # Send the post with the PDF data
-    media_response = requests.post(req_url, headers=headers, params=params, files={'file': pdf_response.content})
+    media_response = requests.post(
+        req_url, headers=headers, params=params, data=mp_encoder)
+
     return media_response
 
 
 def put_media(osti_creds, pub):
     req_url = f"{osti_creds['base_url']}/media/{pub['osti_id']}/{pub['media_id']}"
-    params = {'url': pub['File URL'], 'title': pub['title']}
-    headers = {'Authorization': 'Bearer ' + osti_creds['token']}
 
     # Get the PDF file data from url
-    pdf_response = requests.get(pub['File URL'])
+    pdf_filename = pub['File URL'].split('/')[-1]
+    pdf_response = requests.get(pub['File URL'], stream=True)
+    pdf_response.raw.decode_content = True
+
+    mp_encoder = MultipartEncoder(
+        fields={'file': (pdf_filename, pdf_response.content, 'application/pdf')}
+    )
+
+    headers = {'Authorization': 'Bearer ' + osti_creds['token'],
+               'Content-Type': mp_encoder.content_type}
+    params = {'title': pub['title']}
+    # params = {'url': pub['File URL'], 'title': pub['title']}
 
     # Send the post with the PDF data
-    media_response = requests.put(req_url, headers=headers, params=params, files={'file': pdf_response.content})
+    media_response = requests.put(
+        req_url, headers=headers, params=params, data=mp_encoder)
+
     return media_response
 
