@@ -2,11 +2,6 @@ def process_args():
     import argparse
     parser = argparse.ArgumentParser()
 
-    def validate_elink_version(arg):
-        if not (arg == '1' or arg == '2'):
-            raise ValueError
-        return int(arg)
-
     parser.add_argument("-iq", "--input-qa",
                         dest="input_qa",
                         action="store_true",
@@ -52,12 +47,6 @@ def process_args():
                         nargs="+",
                         help="Optional. Use this flag to specify individual publication IDs for \
                             updates. Example: -iu 1234567 0129384 6592834")
-
-    parser.add_argument("-v", "--version",
-                        dest="elink_version",
-                        type=validate_elink_version,
-                        default=2,
-                        help="Specify OSTI elink version 1 or 2 (default)")
 
     parser.add_argument("-x", "--test",
                         dest="test",
@@ -139,15 +128,9 @@ def assign_creds(args):
         'table': env['ESCHOL_OSTI_DB_TABLE' + output_cnx]}
 
     # OSTI Elink
-    if args.elink_version == 1:
-        selected_creds['osti_api'] = {
-            "base_url": env['OSTI_V1_URL' + elink_cnx],
-            "username": env['OSTI_V1_USERNAME' + elink_cnx],
-            "password": env['OSTI_V1_PASSWORD' + elink_cnx]}
-    else:
-        selected_creds['osti_api'] = {
-            "base_url": env['OSTI_V2_URL' + elink_cnx],
-            "token": env['OSTI_V2_TOKEN' + elink_cnx]}
+    selected_creds['osti_api'] = {
+        "base_url": env['OSTI_URL' + elink_cnx],
+        "token": env['OSTI_TOKEN' + elink_cnx]}
 
     return selected_creds
 

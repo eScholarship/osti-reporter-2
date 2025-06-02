@@ -1,5 +1,4 @@
 import pyodbc
-import write_logs
 
 
 def get_elements_connection(sql_creds):
@@ -48,12 +47,9 @@ def create_temp_table_in_elements(conn, osti_submitted_db):
     print("Creating temp table with submitted OSTI data.")
 
     # Load SQL file
-    try:
-        sql_file = open("sql_files/create_temp_table_in_elements.sql")
-        create_temp_table_sql = sql_file.read()
-    except Exception as e:
-        print("ERROR WHILE OPENING OR READING SQL FILE.")
-        raise e
+    with open("sql_files/create_temp_table_in_elements.sql") as f:
+        create_temp_table_sql = f.read()
+
 
     cursor = conn.cursor()
     cursor.execute(create_temp_table_sql)
@@ -98,12 +94,8 @@ def get_new_osti_pubs(conn, args):
     cursor = conn.cursor()
 
     # Load SQL file
-    try:
-        sql_file = open("sql_files/get_new_osti_pubs_from_elements.sql")
-        sql_query = sql_file.read()
-    except Exception as e:
-        print("ERROR WHILE OPENING OR READING SQL FILE.")
-        raise e
+    with open("sql_files/get_new_osti_pubs_from_elements.sql") as f:
+        sql_query = f.read()
 
     print("Executing query to retrieve new OSTI pubs.")
     sql_query = replace_url_variable_values(args.input_qa, sql_query)
@@ -158,15 +150,12 @@ def add_individual_update_where_clause(id_list, sql_query):
 def get_osti_metadata_updates(conn, args):
 
     # Load SQL file
-    try:
-        sql_file = open("sql_files/get_updated_metadata_from_elements.sql")
-        sql_query = sql_file.read()
-    except Exception as e:
-        print("ERROR WHILE OPENING OR READING SQL FILE")
-        raise e
+    with open("sql_files/get_updated_metadata_from_elements.sql") as f:
+        sql_query = f.read()
 
     print("Adjusting SQL query for specified db input.")
     sql_query = replace_url_variable_values(args.input_qa, sql_query)
+
     if args.individual_updates:
         sql_query = add_individual_update_where_clause(args.individual_updates, sql_query)
 
@@ -186,15 +175,12 @@ def get_osti_metadata_updates(conn, args):
 def get_osti_media_updates(conn, args):
 
     # Load SQL file
-    try:
-        sql_file = open("sql_files/get_updated_pdfs_from_elements.sql")
-        sql_query = sql_file.read()
-    except Exception as e:
-        print("ERROR WHILE OPENING OR READING SQL FILE.")
-        raise e
+    with open("sql_files/get_updated_pdfs_from_elements.sql") as f:
+        sql_query = f.read()
 
     print("Adjusting SQL query for specified db input.")
     sql_query = replace_url_variable_values(args.input_qa, sql_query)
+
     if args.individual_updates:
         sql_query = add_individual_update_where_clause(args.individual_updates, sql_query)
 

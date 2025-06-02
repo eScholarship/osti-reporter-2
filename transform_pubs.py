@@ -37,7 +37,9 @@ def add_osti_data_v2(new_osti_pubs, testing_mode):
         # Identifiers
         osti_pub['identifiers'].append(dict(type='OTHER_ID', value=pub['ark']))
         osti_pub['identifiers'].append(dict(type='OTHER_ID', value=pub['eSchol URL']))
-        if get_lbl_report_number(pub) is not None:  # TK Think something's wrong here?
+
+        # TK Think something's wrong here?
+        if get_lbl_report_number(pub) is not None:
             osti_pub['identifiers'].append(dict(type='RN', value=get_lbl_report_number(pub)))
 
         # Persons
