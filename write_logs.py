@@ -42,7 +42,7 @@ def output_elements_query_results(log_folder, new_osti_pubs):
 def output_submissions(log_folder, new_osti_pubs, elink_version, submission_type="NEW"):
 
     if elink_version == 1:
-        import write_logs_v1
+        import v1_write_logs
         write_logs_v1.output_submissions(log_folder, new_osti_pubs)
 
     else:
@@ -56,7 +56,7 @@ def output_submissions(log_folder, new_osti_pubs, elink_version, submission_type
 def output_responses(log_folder, new_osti_pubs, elink_version):
 
     if elink_version == 1:
-        import write_logs_v1
+        import v1_write_logs
         write_logs_v1.output_responses(log_folder, new_osti_pubs)
 
     else:

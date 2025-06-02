@@ -75,8 +75,8 @@ def transfer_temp_table(args, creds, elements_conn, log_folder):
 # =======================================
 # E-Link 1: New OSTI pubs -- Can remove this when E-Link 2 goes live.
 def process_elink_1_pubs(args, creds, elements_conn, log_folder):
-    import transform_pubs_v1
-    import submit_pubs_v1 as elink_1
+    import v1_transform_pubs
+    import v1_submit_pubs as elink_1
 
     print("\nQuerying Elements Reporting DB for new OSTI publications.")
     new_osti_pubs = elements.get_new_osti_pubs(elements_conn, args)
@@ -180,7 +180,12 @@ def process_new_osti_pubs(args, creds, elements_conn, log_folder):
 # =======================================
 # New PDFs
 def process_new_osti_pdfs(args, creds, elements_conn, log_folder, new_osti_pubs):
-    successful_new_pubs = [p for p in new_osti_pubs if p['response_success']]
+
+    if not new_osti_pubs:
+        print("\nNo successful submissions, so we're not sending any PDFs.")
+        return False
+    else:
+        successful_new_pubs = [p for p in new_osti_pubs if p['response_success']]
 
     if not successful_new_pubs:
         print("\nNo successful submissions, so we're not sending any PDFs.")
