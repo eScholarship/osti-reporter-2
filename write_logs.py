@@ -18,12 +18,12 @@ def create_log_folder():
 
 
 def output_temp_table_query(log_folder, sql):
-    with open(log_folder + "/temp_table_query.sql", "w") as outfile:
+    with open(f"{log_folder}/temp_table_query.sql", "w") as outfile:
         outfile.write(sql)
 
 
 def output_temp_table_results(log_folder, rows):
-    with open(log_folder + "/temp_table_results.csv", "w") as outfile:
+    with open(f"{log_folder}/temp_table_results.csv", "w") as outfile:
         csv_writer = csv.writer(outfile)
         csv_writer.writerow(rows[0].keys())
         for row in rows:
@@ -32,42 +32,41 @@ def output_temp_table_results(log_folder, rows):
 
 
 def output_elements_query_results(log_folder, new_osti_pubs):
-    with open(log_folder + '/elements_query_result.csv', 'w') as outfile:
+    with open(f"{log_folder}/elements_query_result.csv", 'w') as outfile:
         csv_writer = csv.writer(outfile)
         csv_writer.writerow(new_osti_pubs[0].keys())
         for row in new_osti_pubs:
             csv_writer.writerow(row.values())
 
 
-def output_submissions(log_folder, new_osti_pubs, elink_version, submission_type="NEW"):
-
-    if elink_version == 1:
-        import v1_write_logs
-        write_logs_v1.output_submissions(log_folder, new_osti_pubs)
-
-    else:
-        for index, osti_pub in enumerate(new_osti_pubs):
-            filename = f"V2-{submission_type}-{str(index)}-SUBMISSION"
-            osti_pub_json_string = json.dumps(osti_pub['submission_json'], indent=4)
-            with open(log_folder + "/" + filename + ".json", "w") as out_file:
-                out_file.write(osti_pub_json_string)
+def output_submissions(log_folder, new_osti_pubs, submission_type="NEW"):
+    for index, osti_pub in enumerate(new_osti_pubs):
+        filename = f"{submission_type}-{str(index)}-SUBMISSION"
+        osti_pub_json_string = json.dumps(osti_pub['submission_json'], indent=4)
+        with open(f"{log_folder}/{filename}.json", "w") as out_file:
+            out_file.write(osti_pub_json_string)
 
 
-def output_responses(log_folder, new_osti_pubs, elink_version):
-
-    if elink_version == 1:
-        import v1_write_logs
-        write_logs_v1.output_responses(log_folder, new_osti_pubs)
-
-    else:
-        responses = [pub['response_json'] for pub in new_osti_pubs]
-        for index, response_json in enumerate(responses):
-            filename = "V2-" + str(index) + "-RESPONSE"
-            response_json_string = json.dumps(response_json, indent=4)
-            with open(log_folder + "/" + filename + ".json", "w") as out_file:
-                out_file.write(response_json_string)
+def output_responses(log_folder, new_osti_pubs):
+    responses = [pub['response_json'] for pub in new_osti_pubs]
+    for index, response_json in enumerate(responses):
+        filename = f"{str(index)}-RESPONSE"
+        response_json_string = json.dumps(response_json, indent=4)
+        with open(f"{log_folder}/{filename}.json", "w") as out_file:
+            out_file.write(response_json_string)
 
 
-def output_json_generic(log_folder, data, elink_version, filename):
-    with open(f"{log_folder}/V{elink_version}-{filename}.json", "w") as out_file:
+def output_json_generic(log_folder, data, filename):
+    with open(f"{log_folder}/{filename}.json", "w") as out_file:
         out_file.write(json.dumps(data, indent=4, default=serialize_datetime))
+
+
+def unnest_responses(data):
+    new_data = []
+    for item in data:
+        new_item = {'response': item.get('response'),
+                    'submission': item}
+        del new_item['submission']['response']
+        new_data.append(new_item)
+    return new_data
+
