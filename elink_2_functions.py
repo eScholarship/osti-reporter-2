@@ -31,6 +31,7 @@ def submit_new_pdfs(pubs_for_media_submission, osti_creds):
         print(f"\nSubmitting media: Elements ID {pub['id']}, "
               f"OSTI ID {pub['osti_id']} PDF: {pub['File URL']}")
 
+
         media_response = post_media(osti_creds, pub)
         pub['media_response_code'] = media_response.status_code
         pub['media_response_json'] = media_response.json()
@@ -78,7 +79,6 @@ def submit_media_updates(updated_media_pubs, osti_creds):
               f"\nPDF: {pub['File URL']}")
 
         pprint(pub)
-
         # A null media_id means there was an error with the first pdf submission,
         # so it requires a post() b/c no media file currently exists.
         media_response = None
@@ -164,6 +164,6 @@ def put_media(osti_creds, pub):
     # Send the post with the PDF data
     media_response = requests.put(
         req_url, headers=headers, params=params, data=mp_encoder)
-
+    
     return media_response
 
