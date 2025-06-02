@@ -50,6 +50,7 @@ def create_temp_table_in_elements(conn, osti_submitted_db):
     with open("sql_files/create_temp_table_in_elements.sql") as f:
         create_temp_table_sql = f.read()
 
+
     cursor = conn.cursor()
     cursor.execute(create_temp_table_sql)
 

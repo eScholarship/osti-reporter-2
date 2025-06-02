@@ -69,4 +69,3 @@ def unnest_responses(data):
         del new_item['submission']['response']
         new_data.append(new_item)
     return new_data
-
