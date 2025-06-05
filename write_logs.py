@@ -61,11 +61,45 @@ def output_json_generic(log_folder, data, filename):
         out_file.write(json.dumps(data, indent=4, default=serialize_datetime))
 
 
-def unnest_responses(data):
-    new_data = []
-    for item in data:
-        new_item = {'response': item.get('response'),
-                    'submission': item}
-        del new_item['submission']['response']
-        new_data.append(new_item)
-    return new_data
+def print_final_report(new_osti_pubs, new_osti_pdfs, osti_metadata_updates, osti_pdf_updates):
+
+    report_header = "\n ================ OSTI REPORTER: SUMMARY"
+
+    def report_builder(pubs, message, success_field, failure_json_field):
+        print("\n--------------------")
+
+        if not pubs:
+            print(f"No {message}")
+
+        else:
+            success = [p for p in pubs if p[success_field]]
+            failure = [p for p in pubs if not p[success_field]]
+
+            print(f"{len(pubs)} total {message}")
+            print(f"{len(success)} successes, {len(failure)} failures.")
+
+            if success:
+                print(f"\n{len(success)} successful submission(s):")
+                for s in success:
+                    print(s['id'])
+
+            if failure:
+                print(f"\n{len(failure)} failed submission(s):")
+                for f in failure:
+                    print(f"\n{f['id']}\n{f[failure_json_field]}")
+
+    print(report_header)
+
+    report_builder(new_osti_pubs, "new pubs submitted to OSTI.",
+                   'response_success', 'response_json')
+
+    report_builder(new_osti_pdfs, "PDFs submitted for newly-added publications.",
+                   'media_response_success', 'media_response_json')
+
+    report_builder(osti_metadata_updates, "pubs with updated metadata sent to OSTI.",
+                   'response_success', 'response_json')
+
+    report_builder(osti_pdf_updates, "replacement PDFs sent to OSTI.",
+                   'media_response_success', 'media_response_json')
+
+    print(report_header)

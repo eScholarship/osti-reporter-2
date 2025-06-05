@@ -5,7 +5,7 @@ from time import sleep
 
 # Note: mysql_creds are set individually for read and write, So this
 #       connection should be called before each individual mysql_operation.
-def get_eschol_connection(mysql_creds):
+def get_cdl_connection(mysql_creds):
     # connect to the mySql db
     try:
         mysql_conn = pymysql.connect(
@@ -22,8 +22,8 @@ def get_eschol_connection(mysql_creds):
 
 
 # Retrieves the entire eSchol OSTI db
-def get_eschol_osti_db(mysql_creds):
-    mysql_conn = get_eschol_connection(mysql_creds)
+def get_cdl_osti_db(mysql_creds):
+    mysql_conn = get_cdl_connection(mysql_creds)
 
     # Load .sql file
     try:
@@ -46,7 +46,7 @@ def get_eschol_osti_db(mysql_creds):
 
 # Adds new successful OSTI submissions to the eSchol OSTI db.
 def insert_new_metadata_submissions(new_metadata_submissions, mysql_creds):
-    mysql_conn = get_eschol_connection(mysql_creds)
+    mysql_conn = get_cdl_connection(mysql_creds)
 
     # Build the SQl query
     insert_query = (f"""INSERT INTO {mysql_creds['table']} 
@@ -84,7 +84,7 @@ def insert_new_metadata_submissions(new_metadata_submissions, mysql_creds):
 
 # Adds PDF data for new osti submissions. Saves failures as well as successes.
 def update_osti_db_with_pdfs(new_pdf_submissions, mysql_creds):
-    mysql_conn = get_eschol_connection(mysql_creds)
+    mysql_conn = get_cdl_connection(mysql_creds)
 
     with mysql_conn.cursor() as cursor:
         for pub in new_pdf_submissions:
@@ -108,7 +108,7 @@ def update_osti_db_with_pdfs(new_pdf_submissions, mysql_creds):
 # Metadata updates: If the update was successful in OSTI,
 # write the update back to the eSchol OSTI DB.
 def update_osti_db_metadata(successful_metadata_updates, mysql_creds):
-    mysql_conn = get_eschol_connection(mysql_creds)
+    mysql_conn = get_cdl_connection(mysql_creds)
 
     with mysql_conn.cursor() as cursor:
         for pub in successful_metadata_updates:
