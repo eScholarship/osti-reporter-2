@@ -1,7 +1,7 @@
 # Program modules
 import program_setup
 import write_logs
-import local_osti_submission_db_functions as eschol
+import cdl_osti_db_functions as cdl
 import elements_db_functions as elements
 import transform_pubs
 import elink_2_functions as elink_2
@@ -32,7 +32,7 @@ def main():
     # Gets the db connections for Elements
     elements_conn = elements.get_elements_connection(creds['elements_reporting_db'])
 
-    # eSchol OSTI DB --> Elements temp table
+    # CDL OSTI DB --> Elements temp table
     create_and_transfer_temp_table(args, creds, elements_conn, log_folder)
 
     if not args.test_updates:
@@ -51,7 +51,7 @@ def main():
             args, creds, elements_conn, log_folder)
 
     # Prints a digest of completed work
-    print_final_report(
+    write_logs.print_final_report(
         new_osti_pubs, new_osti_pdfs, osti_metadata_updates, osti_pdf_updates)
 
     # Close connections.
@@ -64,11 +64,11 @@ def main():
 
 # =======================================
 def create_and_transfer_temp_table(args, creds, elements_conn, log_folder):
-    # Get the data from the eschol_osti db
-    osti_eschol_db_pubs = eschol.get_eschol_osti_db(creds['eschol_db_read'])
+    # Get the data from the CDL OSTI DB
+    cdl_osti_db_pubs = cdl.get_cdl_osti_db(creds['eschol_db_read'])
 
     # Create temp table in Elements
-    elements.create_temp_table_in_elements(elements_conn, osti_eschol_db_pubs)
+    elements.create_temp_table_in_elements(elements_conn, cdl_osti_db_pubs)
 
     if args.full_logging:
         temp_table_results = elements.get_full_temp_table(elements_conn)
@@ -96,7 +96,7 @@ def process_new_osti_pubs(args, creds, elements_conn, log_folder):
         write_logs.output_elements_query_results(log_folder, new_osti_pubs)
 
     # Add the OSTI-specific submission JSONs
-    new_osti_pubs = transform_pubs.add_osti_data_v2(new_osti_pubs, args.test)
+    new_osti_pubs = transform_pubs.add_osti_data(new_osti_pubs, args.test)
 
     # Log transformed submissions
     if args.full_logging:
@@ -113,17 +113,17 @@ def process_new_osti_pubs(args, creds, elements_conn, log_folder):
 
     # Output pub objects with responses
     write_logs.output_json_generic(
-        log_folder, write_logs.unnest_responses(new_osti_pubs), "submissions-and-responses")
+        log_folder, new_osti_pubs, "submissions-and-responses")
 
-    # Update eSchol OSTI DB with new successful submissions
+    # Update CDL OSTI DB with new successful submissions
     successful_submissions = [pub for pub in new_osti_pubs
                               if pub['response_success'] is True]
 
     if len(successful_submissions) == 0:
         print("\nNo successful metadata submissions in this set. Proceeding.")
     else:
-        print("\nAdding new successful metadata submissions to eSchol OSTI DB:")
-        eschol.insert_new_metadata_submissions(
+        print("\nAdding new successful metadata submissions to CDL OSTI DB:")
+        cdl.insert_new_metadata_submissions(
             successful_submissions, creds['eschol_db_write'])
 
     return new_osti_pubs
@@ -147,9 +147,9 @@ def process_new_osti_pdfs(creds, new_osti_pubs):
     new_osti_pubs_with_pdf_responses = elink_2.submit_new_pdfs(
         successful_new_pubs, creds['osti_api'])
 
-    print("\nUpdating eSchol OSTI DB with media responses"
-          "\n(Note: Failure codes will be saved to the eSchol DB if received)")
-    eschol.update_osti_db_with_pdfs(
+    print("\nUpdating CDL OSTI DB with media responses"
+          "\n(Note: Failure codes will be saved to the CDL DB if received)")
+    cdl.update_osti_db_with_pdfs(
         new_osti_pubs_with_pdf_responses, creds['eschol_db_write'])
 
     return new_osti_pubs_with_pdf_responses
@@ -172,7 +172,7 @@ def process_metadata_updates(args, creds, elements_conn, log_folder):
         osti_metadata_updates = osti_metadata_updates[submission_limit:]
 
     # Transform metadata updates for submission
-    osti_metadata_updates = transform_pubs.add_osti_data_v2(osti_metadata_updates, args.test)
+    osti_metadata_updates = transform_pubs.add_osti_data(osti_metadata_updates, args.test)
 
     # Log metadata updates
     if args.full_logging:
@@ -186,15 +186,15 @@ def process_metadata_updates(args, creds, elements_conn, log_folder):
     write_logs.output_json_generic(
         log_folder, osti_metadata_updates, "v2-update-submissions-and-responses")
 
-    # Update eSchol OSTI DB with new successful submissions
+    # Update CDL OSTI DB with new successful submissions
     successful_metadata_updates = [
         pub for pub in osti_metadata_updates if pub['response_success'] is True]
 
     if len(successful_metadata_updates) == 0:
         print("No successful metadata updates. Proceeding.")
     else:
-        print("\nWriting successful metadata updates to to eSchol OSTI DB:")
-        eschol.update_osti_db_metadata(successful_metadata_updates, creds['eschol_db_write'])
+        print("\nWriting successful metadata updates to to CDL OSTI DB:")
+        cdl.update_osti_db_metadata(successful_metadata_updates, creds['eschol_db_write'])
 
     return osti_metadata_updates
 
@@ -214,60 +214,11 @@ def process_pdf_updates(args, creds, elements_conn, log_folder):
     print("\nSubmitting updated PDFs to OSTI.")
     elink_2.submit_media_updates(osti_media_updates, creds['osti_api'])
 
-    print("\nUpdating eSchol OSTI DB with updated media responses"
-          "\n(Note: Failure codes will be saved to the eSchol DB if received)")
-    eschol.update_osti_db_with_pdfs(osti_media_updates, creds['eschol_db_write'])
+    print("\nUpdating CDL OSTI DB with updated media responses"
+          "\n(Note: Failure codes will be saved to the CDL DB if received)")
+    cdl.update_osti_db_with_pdfs(osti_media_updates, creds['eschol_db_write'])
 
     return osti_media_updates
-
-
-# =======================================
-def print_final_report(new_osti_pubs, new_osti_pdfs, osti_metadata_updates, osti_pdf_updates):
-
-    def print_report_header():
-        print("\n\n========================================"
-              "\n         OSTI REPORTER: SUMMARY"
-              "\n========================================\n")
-
-    def report_builder(pubs, message, success_field, failure_json_field):
-        print("\n--------------------")
-
-        if not pubs:
-            print(f"No {message}")
-
-        else:
-            success = [p for p in pubs if p[success_field]]
-            failure = [p for p in pubs if not p[success_field]]
-
-            print(f"{len(pubs)} total {message}")
-            print(f"{len(success)} successes, {len(failure)} failures.")
-
-            if success:
-                print(f"\n{len(success)} successful submission(s):")
-                for s in success:
-                    print(s['id'])
-
-            if failure:
-                print(f"\n{len(failure)} failed submission(s):")
-                for f in failure:
-                    print(f"\n{f['id']}")
-                    print(f[failure_json_field])
-
-    print_report_header()
-
-    report_builder(new_osti_pubs, "new pubs sent to OSTI.",
-                   'response_success', 'response_json')
-
-    report_builder(new_osti_pdfs, "PDFs submitted for newly-added publications.",
-                   'media_response_success', 'media_response_json')
-
-    report_builder(osti_metadata_updates, "pubs with updated metadata sent to OSTI.",
-                   'response_success', 'response_json')
-
-    report_builder(osti_pdf_updates, "replacement PDFs sent to OSTI.",
-                   'media_response_success', 'media_response_json')
-
-    print_report_header()
 
 
 # =======================================

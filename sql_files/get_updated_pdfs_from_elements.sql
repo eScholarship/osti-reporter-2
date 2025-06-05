@@ -69,9 +69,10 @@ FROM
 
     -- Has already been sent to OSTI
     JOIN #osti_submitted os
-		ON os.[doi] = pr.[doi]
-		OR os.[eschol_id] = pr.[Data Source Proprietary ID]
-		OR os.[elements_id] = p.[ID]
+		ON (    os.[doi] = pr.[doi]
+		    OR os.[eschol_id] = pr.[Data Source Proprietary ID]
+		    OR os.[elements_id] = p.[ID])
+		AND os.osti_id >= 2568336
 
 WHERE
 	-- Primary file is different from what we have on record

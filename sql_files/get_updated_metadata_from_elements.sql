@@ -194,9 +194,10 @@ FROM
 
 	-- LEFT JOIN to the temp table, thus including #osti_submitted NULLs
 	JOIN #osti_submitted os
-		ON os.[doi] = pr.[doi]
-		OR os.[eschol_id] = pr.[Data Source Proprietary ID]
-		OR os.[elements_id] = p.[ID]
+		ON (    os.[doi] = pr.[doi]
+		        OR os.[eschol_id] = pr.[Data Source Proprietary ID]
+		        OR os.[elements_id] = p.[ID])
+		AND os.osti_id >= 2568336
 
 WHERE
 
