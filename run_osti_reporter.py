@@ -65,7 +65,7 @@ def main():
 # =======================================
 def create_and_transfer_temp_table(args, creds, elements_conn, log_folder):
     # Get the data from the CDL OSTI DB
-    cdl_osti_db_pubs = cdl.get_cdl_osti_db(creds['eschol_db_read'])
+    cdl_osti_db_pubs = cdl.get_cdl_osti_db(creds['cdl_db_read'])
 
     # Create temp table in Elements
     elements.create_temp_table_in_elements(elements_conn, cdl_osti_db_pubs)
@@ -124,7 +124,7 @@ def process_new_osti_pubs(args, creds, elements_conn, log_folder):
     else:
         print("\nAdding new successful metadata submissions to CDL OSTI DB:")
         cdl.insert_new_metadata_submissions(
-            successful_submissions, creds['eschol_db_write'])
+            successful_submissions, creds['cdl_db_write'])
 
     return new_osti_pubs
 
@@ -150,7 +150,7 @@ def process_new_osti_pdfs(creds, new_osti_pubs):
     print("\nUpdating CDL OSTI DB with media responses"
           "\n(Note: Failure codes will be saved to the CDL DB if received)")
     cdl.update_osti_db_with_pdfs(
-        new_osti_pubs_with_pdf_responses, creds['eschol_db_write'])
+        new_osti_pubs_with_pdf_responses, creds['cdl_db_write'])
 
     return new_osti_pubs_with_pdf_responses
 
@@ -194,8 +194,8 @@ def process_metadata_updates(args, creds, elements_conn, log_folder):
         print("No successful metadata updates. Proceeding.")
     else:
         print("\nWriting successful metadata updates to to CDL OSTI DB:")
-        cdl.update_osti_db_metadata(successful_metadata_updates, creds['eschol_db_write'])
-
+        cdl.update_osti_db_metadata(successful_metadata_updates, creds['cdl_db_write'])
+        
     return osti_metadata_updates
 
 
@@ -216,7 +216,8 @@ def process_pdf_updates(args, creds, elements_conn, log_folder):
 
     print("\nUpdating CDL OSTI DB with updated media responses"
           "\n(Note: Failure codes will be saved to the CDL DB if received)")
-    cdl.update_osti_db_with_pdfs(osti_media_updates, creds['eschol_db_write'])
+    
+    cdl.update_osti_db_with_pdfs(osti_media_updates, creds['cdl_db_write'])
 
     return osti_media_updates
 

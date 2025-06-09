@@ -111,21 +111,21 @@ def assign_creds(args):
         'local': (env['SSH_LOCAL_URL' + input_cnx],
                   env['SSH_LOCAL_PORT' + input_cnx])}
 
-    # eSchol MySQL for input (read)
-    selected_creds['eschol_db_read'] = {
-        'host': env['ESCHOL_OSTI_DB_SERVER' + input_cnx],
-        'database': env['ESCHOL_OSTI_DB_DATABASE' + input_cnx],
-        'user': env['ESCHOL_OSTI_DB_USER' + input_cnx],
-        'password': env['ESCHOL_OSTI_DB_PASSWORD' + input_cnx],
-        'table': env['ESCHOL_OSTI_DB_TABLE' + input_cnx]}
+    # CDL MySQL for input (read)
+    selected_creds['cdl_db_read'] = {
+        'host': env['CDL_OSTI_DB_SERVER' + input_cnx],
+        'database': env['CDL_OSTI_DB_DATABASE' + input_cnx],
+        'user': env['CDL_OSTI_DB_USER' + input_cnx],
+        'password': env['CDL_OSTI_DB_PASSWORD' + input_cnx],
+        'table': env['CDL_OSTI_DB_TABLE' + input_cnx]}
 
-    # eSchol MySQL for output (write)
-    selected_creds['eschol_db_write'] = {
-        'host': env['ESCHOL_OSTI_DB_SERVER' + output_cnx],
-        'database': env['ESCHOL_OSTI_DB_DATABASE' + output_cnx],
-        'user': env['ESCHOL_OSTI_DB_USER' + output_cnx],
-        'password': env['ESCHOL_OSTI_DB_PASSWORD' + output_cnx],
-        'table': env['ESCHOL_OSTI_DB_TABLE' + output_cnx]}
+    # CDL MySQL for output (write)
+    selected_creds['cdl_db_write'] = {
+        'host': env['CDL_OSTI_DB_SERVER' + output_cnx],
+        'database': env['CDL_OSTI_DB_DATABASE' + output_cnx],
+        'user': env['CDL_OSTI_DB_USER' + output_cnx],
+        'password': env['CDL_OSTI_DB_PASSWORD' + output_cnx],
+        'table': env['CDL_OSTI_DB_TABLE' + output_cnx]}
 
     # OSTI Elink
     selected_creds['osti_api'] = {
