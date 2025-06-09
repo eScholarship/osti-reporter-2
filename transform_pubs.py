@@ -89,10 +89,14 @@ def get_product_type_and_subfields(pub):
 
     elif pub['Type'] == 'Conference papers' or pub['Type'] == 'Poster':
         c_type = 'A' if pub['Type'] == 'Conference papers' else 'O'
+
+        conference_name = pub['name-of-conference'] \
+            if pub['name-of-conference'] else pub['Journal Name']
+
         return {
             'product_type': 'CO',
             'conference_type': c_type,
-            'conference_information': pub['Journal Name']
+            'conference_information': conference_name
         }
 
     elif pub['Type'] == 'Book' or pub['Type'] == 'Chapter':
