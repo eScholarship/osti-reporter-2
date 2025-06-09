@@ -195,7 +195,7 @@ def process_metadata_updates(args, creds, elements_conn, log_folder):
     else:
         print("\nWriting successful metadata updates to to CDL OSTI DB:")
         cdl.update_osti_db_metadata(successful_metadata_updates, creds['cdl_db_write'])
-
+        
     return osti_metadata_updates
 
 
@@ -216,6 +216,7 @@ def process_pdf_updates(args, creds, elements_conn, log_folder):
 
     print("\nUpdating CDL OSTI DB with updated media responses"
           "\n(Note: Failure codes will be saved to the CDL DB if received)")
+    
     cdl.update_osti_db_with_pdfs(osti_media_updates, creds['cdl_db_write'])
 
     return osti_media_updates
