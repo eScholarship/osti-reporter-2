@@ -81,7 +81,7 @@ def get_product_type_and_subfields(pub):
     if pub['Type'] == 'Journal article' or pub['Type'] == 'Internet publication':
         return {
             'product_type': 'JA',
-            'journal_type': 'FT',
+            'journal_type': 'AM',
             'journal_name': pub['Journal Name'],
             'volume': pub['volume'],
             'issue': pub['issue']
