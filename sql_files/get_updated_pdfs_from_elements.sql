@@ -68,6 +68,7 @@ FROM
 		AND prf.[Proprietary ID] NOT LIKE ('%/supp/%')
 
     -- Has already been sent to OSTI
+    -- And is after the E-Link 2 switchover.
     JOIN #osti_submitted os
 		ON (    os.[doi] = pr.[doi]
 		    OR os.[eschol_id] = pr.[Data Source Proprietary ID]
@@ -75,13 +76,11 @@ FROM
 		AND os.osti_id >= 2568336
 
 WHERE
-	-- Primary file is different from what we have on record
-	os.[prf_filename] is not NULL
-	AND (
-	        (os.[prf_filename] != prf.[Filename] OR os.[prf_size] != prf.[Size])
-	        OR
-	        (os.[media_response_code] IS NOT NULL AND os.[media_response_code] > 300)
-	    )
+    -- No media submission or the prf.[index]=0 file has changed
+    os.[media_response_code] is NULL
+	OR os.[media_response_code] > 300
+	OR os.[prf_filename] != prf.[Filename]
+	OR os.[prf_size] != prf.[Size]
 
 	-- INDIVIDUAL UPDATES PUB ID LIST REPLACE
 

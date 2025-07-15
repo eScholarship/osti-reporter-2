@@ -35,12 +35,9 @@ def main():
     # CDL OSTI DB --> Elements temp table
     create_and_transfer_temp_table(args, creds, elements_conn, log_folder)
 
-    if not args.test_updates:
+    if not args.updates_only:
         new_osti_pubs = process_new_osti_pubs(
             args, creds, elements_conn, log_folder)
-
-        new_osti_pdfs = process_new_osti_pdfs(
-            creds, new_osti_pubs)
 
     if args.metadata_updates or args.individual_updates:
         osti_metadata_updates = process_metadata_updates(
@@ -109,50 +106,24 @@ def process_new_osti_pubs(args, creds, elements_conn, log_folder):
         exit(0)
 
     # Otherwise, send the submission jsons to the OSTI API.
-    new_osti_pubs = elink_2.submit_new_pubs(new_osti_pubs, creds['osti_api'])
+    new_osti_pubs = elink_2.submit_new_pubs(
+        new_osti_pubs, creds['osti_api'], creds['cdl_db_write'])
 
     # Output pub objects with responses
     write_logs.output_json_generic(
         log_folder, new_osti_pubs, "submissions-and-responses")
 
     # Update CDL OSTI DB with new successful submissions
-    successful_submissions = [pub for pub in new_osti_pubs
-                              if pub['response_success'] is True]
+    meta_ok = len([pub for pub in new_osti_pubs
+                   if pub['response_success'] is True])
 
-    if len(successful_submissions) == 0:
-        print("\nNo successful metadata submissions in this set. Proceeding.")
-    else:
-        print("\nAdding new successful metadata submissions to CDL OSTI DB:")
-        cdl.insert_new_metadata_submissions(
-            successful_submissions, creds['cdl_db_write'])
+    media_ok = len([pub for pub in new_osti_pubs
+                    if pub['media_response_success'] is True])
+
+    print(f"{meta_ok}/{len(new_osti_pubs)} successful metadata submission in this batch.")
+    print(f"{media_ok}/{meta_ok} successful media submissions for new metadata.")
 
     return new_osti_pubs
-
-
-# =======================================
-# New PDFs
-def process_new_osti_pdfs(creds, new_osti_pubs):
-
-    if not new_osti_pubs:
-        print("\nNo submissions, so we're not sending any PDFs.")
-        return False
-
-    successful_new_pubs = [p for p in new_osti_pubs if p['response_success']]
-
-    if not successful_new_pubs:
-        print("\nNo successful submissions, so we're not sending any PDFs.")
-        return False
-
-    print("\nSubmitting PDFs for successfully-added new pubs.")
-    new_osti_pubs_with_pdf_responses = elink_2.submit_new_pdfs(
-        successful_new_pubs, creds['osti_api'])
-
-    print("\nUpdating CDL OSTI DB with media responses"
-          "\n(Note: Failure codes will be saved to the CDL DB if received)")
-    cdl.update_osti_db_with_pdfs(
-        new_osti_pubs_with_pdf_responses, creds['cdl_db_write'])
-
-    return new_osti_pubs_with_pdf_responses
 
 
 # =======================================
@@ -180,21 +151,19 @@ def process_metadata_updates(args, creds, elements_conn, log_folder):
             log_folder, osti_metadata_updates, "UPDATE-METADATA")
 
     # Submit updated metadata to OSTI
-    osti_metadata_updates = elink_2.submit_metadata_updates(osti_metadata_updates, creds['osti_api'])
+    osti_metadata_updates = elink_2.submit_metadata_updates(
+        osti_metadata_updates, creds['osti_api'], creds['cdl_db_write'])
 
     # Log OSTI API responses; Output pub objects with responses
     write_logs.output_json_generic(
         log_folder, osti_metadata_updates, "v2-update-submissions-and-responses")
 
     # Update CDL OSTI DB with new successful submissions
-    successful_metadata_updates = [
-        pub for pub in osti_metadata_updates if pub['response_success'] is True]
+    successful_metadata_updates = len([
+        pub for pub in osti_metadata_updates if pub['response_success'] is True])
 
-    if len(successful_metadata_updates) == 0:
-        print("No successful metadata updates. Proceeding.")
-    else:
-        print("\nWriting successful metadata updates to to CDL OSTI DB:")
-        cdl.update_osti_db_metadata(successful_metadata_updates, creds['cdl_db_write'])
+    print(f"{successful_metadata_updates}/{len(osti_metadata_updates)} "
+          f"metadata updates processed successfully.")
 
     return osti_metadata_updates
 
@@ -212,12 +181,7 @@ def process_pdf_updates(args, creds, elements_conn, log_folder):
 
     print(f"\n{len(osti_media_updates)} Modified media files for updating.")
     print("\nSubmitting updated PDFs to OSTI.")
-    elink_2.submit_media_updates(osti_media_updates, creds['osti_api'])
-
-    print("\nUpdating CDL OSTI DB with updated media responses"
-          "\n(Note: Failure codes will be saved to the CDL DB if received)")
-
-    cdl.update_osti_db_with_pdfs(osti_media_updates, creds['cdl_db_write'])
+    elink_2.submit_media_updates(osti_media_updates, creds['osti_api'], creds['cdl_db_write'])
 
     return osti_media_updates
 

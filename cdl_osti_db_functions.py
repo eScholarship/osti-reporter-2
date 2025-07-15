@@ -44,89 +44,74 @@ def get_cdl_osti_db(mysql_creds):
     return eschol_osti_db
 
 
-# Adds new successful OSTI submissions to the eSchol OSTI db.
-def insert_new_metadata_submissions(new_metadata_submissions, mysql_creds):
+# Inserts a single new (successful) metadata submission into the database
+def insert_new_metadata_submission(pub, mysql_creds):
     mysql_conn = get_cdl_connection(mysql_creds)
 
-    # Build the SQl query
-    insert_query = (f"""INSERT INTO {mysql_creds['table']} 
-        (date_stamp,
-        eschol_ark,
-        osti_id,
-        doi,
-        lbnl_report_no,
-        elements_id,
-        eschol_id,
-        eschol_pr_modified_when
-        ) VALUES \n""")
-
-    converted_pubs = [convert_nulls_for_sql(pub) for pub in new_metadata_submissions]
-
-    values_list = [(f"""(CURDATE(),
-                    '{pub['ark']}',
-                    {pub['osti_id']},
-                    '{pub['doi']}',
-                    '{pub['LBL Report Number']}',
-                    {pub['id']},
-                    '{pub['eSchol ID']}',
-                    '{pub['eschol_pr_modified_when'].strftime('%Y-%m-%d %H:%M:%S.%f')}')"""
-                    ).replace("'Null'", 'Null') for pub in converted_pubs]
-
-    insert_query += (",\n".join(values_list)) + ";"
-
-    # Open cursor and send query
     with mysql_conn.cursor() as cursor:
+        pub = convert_nulls_for_sql(pub)
+
+        # Build the query
+        insert_query = (f"""INSERT INTO {mysql_creds['table']} 
+            (date_stamp, eschol_ark, osti_id,
+            doi, lbnl_report_no, elements_id,
+            eschol_id, eschol_pr_modified_when) VALUES \n""")
+
+        # Add the values from the pub
+        insert_query += (f"""(CURDATE(), '{pub['ark']}', {pub['osti_id']},
+            '{pub['doi']}', '{pub['LBL Report Number']}', {pub['id']},
+            '{pub['eSchol ID']}', '{pub['eschol_pr_modified_when'].strftime('%Y-%m-%d %H:%M:%S.%f')}');"""
+            ).replace("'Null'", 'Null')
+
+        # Open cursor and send query
         cursor.execute(insert_query)
         mysql_conn.commit()
 
     mysql_conn.close()
 
 
-# Adds PDF data for new osti submissions. Saves failures as well as successes.
-def update_osti_db_with_pdfs(new_pdf_submissions, mysql_creds):
+# Updates a single item's metadata in the CDL OSTI DB.
+def update_osti_db_metadata(pub, mysql_creds):
     mysql_conn = get_cdl_connection(mysql_creds)
 
     with mysql_conn.cursor() as cursor:
-        for pub in new_pdf_submissions:
-            pub = convert_nulls_for_sql(pub)
+        print(f"Updating Elements ID:{pub['id']}, OSTI ID:{pub['osti_id']} with new metadata.")
 
-            print(f"Updating Elements ID:{pub['id']}, OSTI ID:{pub['osti_id']} with media response.")
-            update_query = (f"""UPDATE {mysql_creds["table"]} SET 
-                            media_response_code={pub['media_response_code']},
-                            media_id={pub['media_id']},
-                            media_file_id={pub['media_file_id']},
-                            prf_filename='{pub['Filename']}',
-                            prf_size={pub['File Size']}
-                            WHERE osti_id={pub['osti_id']}; """
-                            ).replace("'Null'", 'Null')
+        pub = convert_nulls_for_sql(pub)
+        update_query = (f"""UPDATE {mysql_creds["table"]} SET
+                        eschol_ark='{pub['ark']}',
+                        doi='{pub['doi']}',
+                        lbnl_report_no='{pub['LBL Report Number']}',
+                        elements_id={pub['id']},
+                        eschol_id='{pub['eSchol ID']}',
+                        eschol_pr_modified_when='{pub['eschol_pr_modified_when'].strftime('%Y-%m-%d %H:%M:%S.%f')}'
+                        WHERE osti_id={pub['osti_id']}; """).replace("'Null'", 'Null')
 
-            cursor.execute(update_query)
-            mysql_conn.commit()
-            sleep(3)
+        cursor.execute(update_query)
+        mysql_conn.commit()
+        sleep(3)
 
 
-# Metadata updates: If the update was successful in OSTI,
-# write the update back to the eSchol OSTI DB.
-def update_osti_db_metadata(successful_metadata_updates, mysql_creds):
+# Update the CDL DB with a single media response
+def update_media_submission(pub, mysql_creds):
     mysql_conn = get_cdl_connection(mysql_creds)
-
     with mysql_conn.cursor() as cursor:
-        for pub in successful_metadata_updates:
-            print(f"Updating Elements ID:{pub['id']}, OSTI ID:{pub['osti_id']} with new metadata.")
+        pub = convert_nulls_for_sql(pub)
 
-            pub = convert_nulls_for_sql(pub)
-            update_query = (f"""UPDATE {mysql_creds["table"]} SET
-                            eschol_ark='{pub['ark']}',
-                            doi='{pub['doi']}',
-                            lbnl_report_no='{pub['LBL Report Number']}',
-                            elements_id={pub['id']},
-                            eschol_id='{pub['eSchol ID']}',
-                            eschol_pr_modified_when='{pub['eschol_pr_modified_when'].strftime('%Y-%m-%d %H:%M:%S.%f')}'
-                            WHERE osti_id={pub['osti_id']}; """).replace("'Null'", 'Null')
+        update_query = (f"""UPDATE {mysql_creds["table"]} SET 
+                        media_response_code={pub['media_response_code']},
+                        media_id={pub['media_id']},
+                        media_file_id={pub['media_file_id']},
+                        prf_filename='{pub['Filename']}',
+                        prf_size={pub['File Size']}
+                        WHERE osti_id={pub['osti_id']}; """
+                        ).replace("'Null'", 'Null')
 
-            cursor.execute(update_query)
-            mysql_conn.commit()
-            sleep(3)
+        cursor.execute(update_query)
+        mysql_conn.commit()
+        sleep(3)
+
+    mysql_conn.close()
 
 
 def convert_nulls_for_sql(pub):
