@@ -12,9 +12,7 @@ def submit_new_pubs(pubs_for_metadata_submission, osti_creds, mysql_creds):
 
         try:
             response = post_metadata(osti_creds, pub)
-            pub['response_status_code'] = response.status_code
-            pub['response_json'] = response.json()
-            pub['response_success'] = (response.status_code < 300)
+            pub = update_pub_with_response(pub, response)
 
             if pub['response_success']:
                 print("Metadata Submission OK.")
@@ -27,20 +25,12 @@ def submit_new_pubs(pubs_for_metadata_submission, osti_creds, mysql_creds):
                       f"OSTI ID {pub['osti_id']}, PDF: {pub['File URL']}")
 
                 media_response = post_media(osti_creds, pub)
-                pub['media_response_code'] = media_response.status_code
-                pub['media_response_json'] = media_response.json()
-                pub['media_response_success'] = (media_response.status_code < 300)
+                pub = update_pub_with_media_response(pub, media_response)
 
                 if pub['media_response_success']:
                     print("Media submission OK.")
-                    pub['media_id'] = media_response.json()['files'][0]['media_id']
-                    pub['media_file_id'] = media_response.json()['files'][0]['media_file_id']
-
                 else:
                     print(f"Media submission failure: {media_response.status_code}")
-                    print(pub['media_response_json'])
-                    pub['media_id'] = None
-                    pub['media_file_id'] = None
 
                 print("Updating CDL DB with Media data (will include media failure codes).")
                 cdl.update_media_submission(pub, mysql_creds)
@@ -64,15 +54,12 @@ def submit_metadata_updates(updated_osti_pubs, osti_creds, mysql_creds):
 
         try:
             response = put_metadata(osti_creds, pub)
-            pub['response_status_code'] = response.status_code
-            pub['response_json'] = response.json()
-            pub['response_success'] = (response.status_code < 300)
+            pub = update_pub_with_response(pub, response)
 
             if pub['response_success']:
                 print("Metadata Update Submission OK.")
                 print("Updating CDL DB with response data.")
                 cdl.update_osti_db_metadata(pub, mysql_creds)
-
             else:
                 print("Metadata Update Submission Failure:")
                 print(response.json())
@@ -103,18 +90,12 @@ def submit_media_updates(updated_media_pubs, osti_creds, mysql_creds):
                 print("Existing file ID: Updating PDF.")
                 media_response = put_media(osti_creds, pub)
 
-            pub['media_response_code'] = media_response.status_code
-            pub['media_response_json'] = media_response.json()
-            pub['media_response_success'] = (media_response.status_code < 300)
+            pub = update_pub_with_media_response(pub, media_response)
 
             if pub['media_response_success']:
                 print("Media update OK.")
-                pub['media_id'] = media_response.json()['files'][0]['media_id']
-                pub['media_file_id'] = media_response.json()['files'][0]['media_file_id']
             else:
                 print(f"Media update failure: {media_response.status_code}")
-                pub['media_id'] = None
-                pub['media_file_id'] = None
 
             print("Updating CDL DB with Media data (will include media failure codes).")
             cdl.update_media_submission(pub, mysql_creds)
@@ -186,3 +167,26 @@ def put_media(osti_creds, pub):
 
     return media_response
 
+
+# Adds metadata response data to publication dict
+def update_pub_with_response(pub, metadata_response):
+    pub['response_status_code'] = metadata_response.status_code
+    pub['response_json'] = metadata_response.json()
+    pub['response_success'] = (metadata_response.status_code < 300)
+    return pub
+
+
+# Adds media response data to publication dict
+def update_pub_with_media_response(pub, media_response):
+    pub['media_response_code'] = media_response.status_code
+    pub['media_response_json'] = media_response.json()
+    pub['media_response_success'] = (media_response.status_code < 300)
+
+    if pub['media_response_success']:
+        pub['media_id'] = media_response.json()['files'][0]['media_id']
+        pub['media_file_id'] = media_response.json()['files'][0]['media_file_id']
+    else:
+        pub['media_id'] = None
+        pub['media_file_id'] = None
+
+    return pub
