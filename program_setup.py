@@ -54,11 +54,12 @@ def process_args():
                         default=False,
                         help="Outputs update XML or JSON to disk rather than sending to OSTI API.")
 
-    parser.add_argument("-xu", "--test-updates",
-                        dest="test_updates",
+    parser.add_argument("-uo", "--updates-only",
+                        dest="updates_only",
                         action="store_true",
                         default=False,
-                        help="Skips ordinary submission step and jumps to update steps.")
+                        help=("Skips ordinary submission step only runs updates. "
+                              "Will exit if not also run with -mu (media updates) or -pu (pdf updates)."))
 
     parser.add_argument("-fl", "--full-logging",
                         dest="full_logging",
