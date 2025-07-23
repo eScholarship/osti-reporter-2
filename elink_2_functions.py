@@ -9,7 +9,6 @@ import cdl_osti_db_functions as cdl
 # New Metadata submissions
 def submit_new_pubs(pubs_for_metadata_submission, osti_creds, mysql_creds):
     submission_counter = 0
-
     for pub in pubs_for_metadata_submission:
         submission_counter += 1
         print(f"\nSubmission {submission_counter}/{len(pubs_for_metadata_submission)}")
@@ -207,7 +206,6 @@ def update_pub_with_media_response(pub, media_response):
         pub['media_file_id'] = None
 
     return pub
-
 
 def get_pubs_by_workflow_status(osti_creds, workflow_status):
     # Build the request & send it to OSTI
