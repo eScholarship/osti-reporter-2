@@ -1,14 +1,19 @@
 # OSTI E-Link 2 documentation https://review.osti.gov/elink2api/
 import requests
 import mimetypes
+from time import sleep
 from requests_toolbelt.multipart.encoder import MultipartEncoder
 import cdl_osti_db_functions as cdl
 
 
 # New Metadata submissions
 def submit_new_pubs(pubs_for_metadata_submission, osti_creds, mysql_creds):
+    submission_counter = 0
+
     for pub in pubs_for_metadata_submission:
-        print(f"\nSubmitting Publication ID: {pub['id']}")
+        submission_counter += 1
+        print(f"\nSubmission {submission_counter}/{len(pubs_for_metadata_submission)}")
+        print(f"Submitting Publication ID: {pub['id']}")
 
         try:
             response = post_metadata(osti_creds, pub)
@@ -20,6 +25,7 @@ def submit_new_pubs(pubs_for_metadata_submission, osti_creds, mysql_creds):
 
                 print("Updating CDL DB with response data.")
                 cdl.insert_new_metadata_submission(pub, mysql_creds)
+                sleep(3)
 
                 print(f"Submitting media: Elements ID {pub['id']}, "
                       f"OSTI ID {pub['osti_id']}, PDF: {pub['File URL']}")
@@ -178,9 +184,20 @@ def update_pub_with_response(pub, metadata_response):
 
 # Adds media response data to publication dict
 def update_pub_with_media_response(pub, media_response):
-    pub['media_response_code'] = media_response.status_code
-    pub['media_response_json'] = media_response.json()
-    pub['media_response_success'] = (media_response.status_code < 300)
+
+    # The Media API can return non-JSON data, which will trigger a decode error.
+    try:
+        pub['media_response_code'] = media_response.status_code
+        pub['media_response_json'] = media_response.json()
+        pub['media_response_success'] = (media_response.status_code < 300)
+
+    except Exception as e:
+        print("Nonstandard media API response.\n"
+              "Saving as submission failure.\nResponse text:")
+        print(media_response)
+        pub['media_response_code'] = None
+        pub['media_response_json'] = None
+        pub['media_response_success'] = False
 
     if pub['media_response_success']:
         pub['media_id'] = media_response.json()['files'][0]['media_id']
@@ -190,3 +207,29 @@ def update_pub_with_media_response(pub, media_response):
         pub['media_file_id'] = None
 
     return pub
+
+
+def get_pubs_by_workflow_status(osti_creds, workflow_status):
+    # Build the request & send it to OSTI
+    req_url = f"{osti_creds['base_url']}/records"
+    headers = {'Authorization': 'Bearer ' + osti_creds['token']}
+    params = {
+        'site_ownership_code': 'LBNLSCH',
+        'date_first_submitted_from': '06/01/2025',
+        'workflow_status': workflow_status}
+
+    response = requests.get(req_url, params=params, headers=headers)
+    return response
+
+
+def get_hidden_pubs(osti_creds):
+    # Build the request & send it to OSTI
+    req_url = f"{osti_creds['base_url']}/records"
+    headers = {'Authorization': 'Bearer ' + osti_creds['token']}
+    params = {
+        'site_ownership_code': 'LBNLSCH',
+        'date_first_submitted_from': '06/01/2025',
+        'hidden_flag': 'true'}
+
+    response = requests.get(req_url, params=params, headers=headers)
+    return response

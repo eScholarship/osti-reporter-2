@@ -113,12 +113,12 @@ def process_new_osti_pubs(args, creds, elements_conn, log_folder):
     write_logs.output_json_generic(
         log_folder, new_osti_pubs, "submissions-and-responses")
 
-    # Update CDL OSTI DB with new successful submissions
+    # Report successful meta & media submission counts
     meta_ok = len([pub for pub in new_osti_pubs
-                   if pub['response_success'] is True])
+                   if pub.get('response_success') is True])
 
     media_ok = len([pub for pub in new_osti_pubs
-                    if pub['media_response_success'] is True])
+                    if pub.get('media_response_success') is True])
 
     print(f"{meta_ok}/{len(new_osti_pubs)} successful metadata submission in this batch.")
     print(f"{media_ok}/{meta_ok} successful media submissions for new metadata.")
@@ -158,9 +158,9 @@ def process_metadata_updates(args, creds, elements_conn, log_folder):
     write_logs.output_json_generic(
         log_folder, osti_metadata_updates, "v2-update-submissions-and-responses")
 
-    # Update CDL OSTI DB with new successful submissions
+    # Report succesfull metadata updates
     successful_metadata_updates = len([
-        pub for pub in osti_metadata_updates if pub['response_success'] is True])
+        pub for pub in osti_metadata_updates if pub.get('response_success') is True])
 
     print(f"{successful_metadata_updates}/{len(osti_metadata_updates)} "
           f"metadata updates processed successfully.")
