@@ -77,10 +77,11 @@ FROM
 
 WHERE
     -- No media submission or the prf.[index]=0 file has changed
-    os.[media_response_code] is NULL
+    (os.[media_response_code] is NULL
 	OR os.[media_response_code] > 300
 	OR os.[prf_filename] != prf.[Filename]
-	OR os.[prf_size] != prf.[Size]
+	OR os.[prf_size] != prf.[Size])
+	AND NOT os.[media_id_deleted] = 1
 
 	-- INDIVIDUAL UPDATES PUB ID LIST REPLACE
 

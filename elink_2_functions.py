@@ -102,8 +102,12 @@ def submit_media_updates(updated_media_pubs, osti_creds, mysql_creds):
             else:
                 print(f"Media update failure: {media_response.status_code}")
 
-            print("Updating CDL DB with Media data (will include media failure codes).")
-            cdl.update_media_submission(pub, mysql_creds)
+            if pub['media_response_code'] == 404:
+                print("Updating CDL DB to indicate a deleted Media ID.")
+                cdl.update_media_deleted_id(pub, mysql_creds)
+            else:
+                print("Updating CDL DB with Media data (includes non-404 failure codes).")
+                cdl.update_media_submission(pub, mysql_creds)
 
         except Exception as e:
             print(e)

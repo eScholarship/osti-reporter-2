@@ -8,5 +8,6 @@ CREATE TABLE #osti_submitted (
     prf_size BIGINT,
     media_response_code INT,
     media_id INT,
-    media_file_id INT
+    media_file_id INT,
+    media_id_deleted BIT
 );
