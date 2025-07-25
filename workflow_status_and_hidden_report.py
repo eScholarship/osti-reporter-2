@@ -18,13 +18,13 @@ def main():
         hidden_pubs = hidden_response.json()
 
         if not sv_pubs:
-            print("No 'SV' status pubs since 2025-06-01.")
+            print("No 'SV' status pubs since 2024-10-01.")
         else:
             sv_pubs = [filter_pub(pub) for pub in sv_pubs]
             print_workflow_pub_summaries(sv_pubs)
 
         if not hidden_pubs:
-            print("No hidden pubs since 2025-06-01.")
+            print("No hidden pubs since 2024-10-01.")
         else:
             print_hidden_pub_summaries(hidden_pubs)
 
@@ -52,7 +52,7 @@ def filter_pub(pub):
 
 
 def print_workflow_pub_summaries(pubs):
-    print(f"{len(pubs)} pubs at OSTI with 'SV' workflow status since 2025-06-01.\n"
+    print(f"{len(pubs)} pubs at OSTI with 'SV' workflow status since 2024-10-01.\n"
           f"\nSummary:")
 
     for pub in pubs:
@@ -78,7 +78,7 @@ def print_workflow_pub_details(pubs):
 
 
 def print_hidden_pub_summaries(pubs):
-    print(f"\n\n{len(pubs)} hidden publications since 2025-06-01.\n")
+    print(f"\n\n{len(pubs)} hidden publications since 2024-10-01.\n")
     print("Sensitivity flags: ")
     print("""U : Unlimited distribution
 S : Sensitive, no public distribution

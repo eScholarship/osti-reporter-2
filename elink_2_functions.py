@@ -217,7 +217,7 @@ def get_pubs_by_workflow_status(osti_creds, workflow_status):
     headers = {'Authorization': 'Bearer ' + osti_creds['token']}
     params = {
         'site_ownership_code': 'LBNLSCH',
-        'date_first_submitted_from': '06/01/2025',
+        'date_first_submitted_from': '10/01/2024',
         'workflow_status': workflow_status}
 
     response = requests.get(req_url, params=params, headers=headers)
@@ -230,7 +230,7 @@ def get_hidden_pubs(osti_creds):
     headers = {'Authorization': 'Bearer ' + osti_creds['token']}
     params = {
         'site_ownership_code': 'LBNLSCH',
-        'date_first_submitted_from': '06/01/2025',
+        'date_first_submitted_from': '10/01/2024',
         'hidden_flag': 'true'}
 
     response = requests.get(req_url, params=params, headers=headers)
