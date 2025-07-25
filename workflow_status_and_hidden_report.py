@@ -67,6 +67,7 @@ def print_workflow_pub_summaries(pubs):
         file_urls = get_file_urls(pub)
         print(f"file array URLs: {file_urls}")
 
+
         last_log = pub['audit_logs'][-1]
         print(f"Most recent audit log:")
         pprint(last_log)
