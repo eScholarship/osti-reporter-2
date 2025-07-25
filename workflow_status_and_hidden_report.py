@@ -56,12 +56,14 @@ def print_workflow_pub_summaries(pubs):
           f"\nSummary:")
 
     for pub in pubs:
-        print(f"\nDOI: {pub['doi']}")
-
+        print(f"\nOSTI ID: {pub['osti_id']}")
+        print(f"OSTI URL: https://www.osti.gov/elink/record/{pub['osti_id']}")
+        print(f"DOI: {pub['doi']}")
         eschol_url = ','.join(
             [i['value'] for i in pub['identifiers']
              if 'https://escholarship.org/uc/item/' in i['value']])
-        print(f"eSchol URL: {eschol_url}")
+        print(f"eSchol URL found in 'identifiers': {eschol_url}")
+        print(f"site_url: {pub.get('site_url')}")
 
         last_log = pub['audit_logs'][-1]
         print(f"Most recent audit log:")
@@ -78,7 +80,8 @@ def print_workflow_pub_details(pubs):
 
 
 def print_hidden_pub_summaries(pubs):
-    print(f"\n\n{len(pubs)} hidden publications since 2024-10-01.\n")
+    print("\n\n-----------------------------------")
+    print(f"{len(pubs)} hidden publications since 2024-10-01.\n")
     print("Sensitivity flags: ")
     print("""U : Unlimited distribution
 S : Sensitive, no public distribution
@@ -87,14 +90,15 @@ E : Media is under embargo
 X : No distribution, usually error condition
     """)
     for pub in pubs:
-        print(f"\nDOI: {pub['doi']}")
-        print(f"OSTI ID: {pub['osti_id']}")
+        print(f"\nOSTI ID: {pub['osti_id']}")
         print(f"OSTI URL: https://www.osti.gov/elink/record/{pub['osti_id']}")
+        print(f"DOI: {pub['doi']}")
         eschol_url = ','.join(
             [i['value'] for i in pub['identifiers']
              if 'https://escholarship.org/uc/item/' in i['value']])
-        print(f"eSchol URL: {eschol_url}")
-        print(f"sensitivity_flag: {pub['sensitivity_flag']}")
+        print(f"eSchol URL found in 'identifiers': {eschol_url}")
+        print(f"site_url: {pub.get('site_url')}")
+        print(f"sensitivity_flag: {pub.get('sensitivity_flag')}")
 
 
 # =======================================
