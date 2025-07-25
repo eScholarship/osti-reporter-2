@@ -64,6 +64,8 @@ def print_workflow_pub_summaries(pubs):
              if 'https://escholarship.org/uc/item/' in i['value']])
         print(f"eSchol URL found in 'identifiers': {eschol_url}")
         print(f"site_url: {pub.get('site_url')}")
+        file_urls = get_file_urls(pub)
+        print(f"file array URLs: {file_urls}")
 
         last_log = pub['audit_logs'][-1]
         print(f"Most recent audit log:")
@@ -99,6 +101,25 @@ X : No distribution, usually error condition
         print(f"eSchol URL found in 'identifiers': {eschol_url}")
         print(f"site_url: {pub.get('site_url')}")
         print(f"sensitivity_flag: {pub.get('sensitivity_flag')}")
+
+
+def get_file_urls(p):
+    media = p.get('media')
+    if not media:
+        return None
+
+    file_urls = []
+    for m in media:
+        files = m.get('files')
+        for f in files:
+            furl = f.get('url')
+            if furl:
+                file_urls.append(furl)
+
+    if not file_urls:
+        return None
+    else:
+        return ','.join(file_urls)
 
 
 # =======================================
