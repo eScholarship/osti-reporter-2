@@ -11,5 +11,6 @@ SELECT
     prf_size,
     media_response_code,
     media_id,
-    media_file_id
+    media_file_id,
+    media_id_deleted
 From table_replace;

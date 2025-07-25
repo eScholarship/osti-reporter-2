@@ -114,6 +114,23 @@ def update_media_submission(pub, mysql_creds):
     mysql_conn.close()
 
 
+# Update the CDL DB if a pub receives a 404 while submitting a PDF update to OSTI
+def update_media_deleted_id(pub, mysql_creds):
+    mysql_conn = get_cdl_connection(mysql_creds)
+    with mysql_conn.cursor() as cursor:
+        pub = convert_nulls_for_sql(pub)
+
+        update_query = (f"""UPDATE {mysql_creds["table"]} SET 
+                        media_id_deleted=true
+                        WHERE osti_id={pub['osti_id']};""")
+
+        cursor.execute(update_query)
+        mysql_conn.commit()
+        sleep(3)
+
+    mysql_conn.close()
+
+
 def convert_nulls_for_sql(pub):
     converted_pub = {}
 
