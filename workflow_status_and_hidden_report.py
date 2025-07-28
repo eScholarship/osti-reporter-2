@@ -36,7 +36,6 @@ def main2():
     print_item_info("'SV' status (not yet released)", sv_pubs)
     print_item_info("Hidden", hidden_pubs)
 
-
 def print_item_info(problem, pubs):
     for pub in pubs:
         print(f"\n\nPROBLEM: {problem}")
