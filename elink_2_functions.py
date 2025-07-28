@@ -211,8 +211,8 @@ def update_pub_with_media_response(pub, media_response):
 
     return pub
 
+
 def get_pubs_by_workflow_status(osti_creds, workflow_status):
-    # Build the request & send it to OSTI
     req_url = f"{osti_creds['base_url']}/records"
     headers = {'Authorization': 'Bearer ' + osti_creds['token']}
     params = {
@@ -225,7 +225,6 @@ def get_pubs_by_workflow_status(osti_creds, workflow_status):
 
 
 def get_hidden_pubs(osti_creds):
-    # Build the request & send it to OSTI
     req_url = f"{osti_creds['base_url']}/records"
     headers = {'Authorization': 'Bearer ' + osti_creds['token']}
     params = {
@@ -234,4 +233,12 @@ def get_hidden_pubs(osti_creds):
         'hidden_flag': 'true'}
 
     response = requests.get(req_url, params=params, headers=headers)
+    return response
+
+
+def get_comments(osti_creds, osti_id):
+    req_url = f"{osti_creds['base_url']}/comments/{osti_id}"
+    headers = {'Authorization': 'Bearer ' + osti_creds['token']}
+
+    response = requests.get(req_url, headers=headers)
     return response
