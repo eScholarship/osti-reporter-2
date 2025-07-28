@@ -29,8 +29,8 @@ def main2():
             item['comments'] = None
 
     print(f"{len(sv_pubs) + len(hidden_pubs)} total items found with issues:\n"
-          f" > {len(sv_pubs)} pubs with 'SV' status (not yet released),\n"
-          f" > {len(hidden_pubs)} hidden pubs.")
+          f"• {len(sv_pubs)} pubs with 'SV' status (not yet released),\n"
+          f"• {len(hidden_pubs)} hidden pubs.")
     print("\n================================")
 
     print_item_info("'SV' status (not yet released)", sv_pubs)
@@ -39,30 +39,28 @@ def main2():
 
 def print_item_info(problem, pubs):
     for pub in pubs:
-        print(f"\n\nPROBLEM: {problem}")
+        print("\n\n--------------------")
+        print(f"\nPROBLEM: {problem}")
         print(f"OSTI ID: {pub['osti_id']}")
         print(f"OSTI URL: https://www.osti.gov/elink/record/{pub['osti_id']}")
         print(f"DOI: https://doi.org/{pub['doi']}")
 
         eschol_urls = compile_eschol_urls(pub)
-        if not eschol_urls:
-            print('ESCHOL URLS: None')
-        else:
-            print('eSchol URLS:')
-            for url in eschol_urls:
-                print(f" > {url}")
+        if eschol_urls:
+            if len(eschol_urls) == 1:
+                print(f"ESCHOL URL: {eschol_urls[0]}")
+            else:
+                print('\nESCHOL URLS:')
+                for url in eschol_urls:
+                    print(f"{url}")
 
-        if not pub['audit_logs']:
-            print("AUDIT LOGS: None")
-        else:
-            print("AUDIT LOGS:")
+        if pub['audit_logs']:
+            print("\nAUDIT LOGS:")
             for index, audit in enumerate(pub['audit_logs']):
                 print_audit_log(index, audit)
 
-        if not pub['comments']:
-            print("COMMENTS: None")
-        else:
-            print("COMMENTS:")
+        if pub['comments']:
+            print("\nCOMMENTS:")
             for index, comment in enumerate(pub['comments']):
                 print_comment(index, comment)
 
@@ -87,7 +85,7 @@ def print_comment(index, comment):
 
     state = get_comment_state(comment['state'])
     ts = split_ts(comment['date_added'])
-    print(f" > {index} {ts} {state} : {comment['comments'][0]['text']}")
+    print(f"[{index}] [{ts}] [{state}] :: {comment['comments'][0]['text']}")
 
 
 def print_audit_log(index, audit):
@@ -95,8 +93,8 @@ def print_audit_log(index, audit):
     ts = split_ts(audit['audit_date'])
     messages = ';'.join(audit['messages'])
 
-    print(f" > {index} {ts} [STATUS: {audit['status']}] "
-          f"[TYPE: {audit['type']} : {messages}]")
+    print(f"[{index}] [{ts}] [STATUS: {audit['status']}] "
+          f"[TYPE: {audit['type']}] :: {messages}")
 
 
 def compile_eschol_urls(pub):
