@@ -4,110 +4,115 @@ from pprint import pprint
 
 
 # =======================================
-def main():
+def main2():
     # ---------- GENERAL SETUP
     # Process args; Assign creds based on args; Create the log folder.
     args = program_setup.process_args()
     creds = program_setup.assign_creds(args)
 
     sv_response = elink_2.get_pubs_by_workflow_status(creds['osti_api'], 'SV')
+    sv_pubs = sv_response.json()
+    for item in sv_pubs:
+        comments_response = elink_2.get_comments(creds['osti_api'], item['osti_id'])
+        try:
+            item['comments'] = comments_response.json()
+        except:
+            item['comments'] = None
+
     hidden_response = elink_2.get_hidden_pubs(creds['osti_api'])
+    hidden_pubs = hidden_response.json()
+    for item in hidden_pubs:
+        comments_response = elink_2.get_comments(creds['osti_api'], item['osti_id'])
+        try:
+            item['comments'] = comments_response.json()
+        except:
+            item['comments'] = None
 
-    try:
-        sv_pubs = sv_response.json()
-        hidden_pubs = hidden_response.json()
+    print(f"{len(sv_pubs) + len(hidden_pubs)} total items found with issues:\n"
+          f" > {len(sv_pubs)} pubs with 'SV' status (not yet released),\n"
+          f" > {len(hidden_pubs)} hidden pubs.")
+    print("\n================================")
 
-        if not sv_pubs:
-            print("No 'SV' status pubs since 2024-10-01.")
-        else:
-            sv_pubs = [filter_pub(pub) for pub in sv_pubs]
-            print_workflow_pub_summaries(sv_pubs)
+    print_item_info("'SV' status (not yet released)", sv_pubs)
+    print_item_info("Hidden", hidden_pubs)
 
-        if not hidden_pubs:
-            print("No hidden pubs since 2024-10-01.")
-        else:
-            print_hidden_pub_summaries(hidden_pubs)
-
-        if sv_pubs:
-            print_workflow_pub_details(sv_pubs)
-
-    except Exception as e:
-        raise "An error occured while decoding the API's reponse."
-
-
-def filter_pub(pub):
-    keep_keys = [
-        'doi', 'title', 'identifiers',
-        'osti_id', 'date_metadata_added',
-        'product_type', 'publication_date',
-        'released_to_osti_date', 'source_input_type',
-        'source_edit_type', 'hidden_flag',
-        'audit_logs']
-
-    filtered_pub = {key: pub[key]
-                    for key in keep_keys
-                    if key in pub}
-
-    return filtered_pub
-
-
-def print_workflow_pub_summaries(pubs):
-    print(f"{len(pubs)} pubs at OSTI with 'SV' workflow status since 2024-10-01.\n"
-          f"\nSummary:")
-
+def print_item_info(problem, pubs):
     for pub in pubs:
-        print(f"\nOSTI ID: {pub['osti_id']}")
+        print(f"\n\nPROBLEM: {problem}")
+        print(f"OSTI ID: {pub['osti_id']}")
         print(f"OSTI URL: https://www.osti.gov/elink/record/{pub['osti_id']}")
-        print(f"DOI: {pub['doi']}")
-        eschol_url = ','.join(
-            [i['value'] for i in pub['identifiers']
-             if 'https://escholarship.org/uc/item/' in i['value']])
-        print(f"eSchol URL found in 'identifiers': {eschol_url}")
-        print(f"site_url: {pub.get('site_url')}")
-        file_urls = get_file_urls(pub)
-        print(f"file array URLs: {file_urls}")
+        print(f"DOI: https://doi.org/{pub['doi']}")
+
+        eschol_urls = compile_eschol_urls(pub)
+        if not eschol_urls:
+            print('ESCHOL URLS: None')
+        else:
+            print('eSchol URLS:')
+            for url in eschol_urls:
+                print(f" > {url}")
+
+        if not pub['audit_logs']:
+            print("AUDIT LOGS: None")
+        else:
+            print("AUDIT LOGS:")
+            for index, audit in enumerate(pub['audit_logs']):
+                print_audit_log(index, audit)
+
+        if not pub['comments']:
+            print("COMMENTS: None")
+        else:
+            print("COMMENTS:")
+            for index, comment in enumerate(pub['comments']):
+                print_comment(index, comment)
 
 
-        last_log = pub['audit_logs'][-1]
-        print(f"Most recent audit log:")
-        pprint(last_log)
+def split_ts(ts):
+    ts = ts.split('+')[0]
+    ts = ts.split('.')[0]
+    ts = ts.replace('T', ' ')
+    return ts
 
 
-def print_workflow_pub_details(pubs):
-    print("\n\n----------------")
-    print("'SV' pubs, more details:")
+def print_comment(index, comment):
+    def get_comment_state(s):
+        if s == 'I':
+            return '[INFO]'
+        elif s == 'O':
+            return '[OPEN ISSUE]'
+        elif s == 'C':
+            return '[CLOSED ISSUE]'
+        else:
+            return '[???]'
 
-    for pub in pubs:
-        print(f"\n\nDOI: {pub['doi']}")
-        pprint(pub)
+    state = get_comment_state(comment['state'])
+    ts = split_ts(comment['date_added'])
+    print(f" > {index} {ts} {state} : {comment['comments'][0]['text']}")
 
 
-def print_hidden_pub_summaries(pubs):
-    print("\n\n-----------------------------------")
-    print(f"{len(pubs)} hidden publications since 2024-10-01.\n")
-    print("Sensitivity flags: ")
-    print("""U : Unlimited distribution
-S : Sensitive, no public distribution
-H : Hybrid sensitivity
-E : Media is under embargo
-X : No distribution, usually error condition
-    """)
-    for pub in pubs:
-        print(f"\nOSTI ID: {pub['osti_id']}")
-        print(f"OSTI URL: https://www.osti.gov/elink/record/{pub['osti_id']}")
-        print(f"DOI: {pub['doi']}")
-        eschol_url = ','.join(
-            [i['value'] for i in pub['identifiers']
-             if 'https://escholarship.org/uc/item/' in i['value']])
-        print(f"eSchol URL found in 'identifiers': {eschol_url}")
-        print(f"site_url: {pub.get('site_url')}")
-        print(f"sensitivity_flag: {pub.get('sensitivity_flag')}")
+def print_audit_log(index, audit):
+
+    ts = split_ts(audit['audit_date'])
+    messages = ';'.join(audit['messages'])
+
+    print(f" > {index} {ts} [STATUS: {audit['status']}] "
+          f"[TYPE: {audit['type']} : {messages}]")
+
+
+def compile_eschol_urls(pub):
+    eschol_urls = []
+    eschol_urls = [i['value'] for i in pub['identifiers']
+                   if 'https://escholarship.org/uc/item/' in i['value']]
+    eschol_urls.append(pub.get('site_url'))
+    eschol_urls += get_file_urls(pub)
+    eschol_urls = [u for u in eschol_urls if u is not None]
+    eschol_urls = list(set(eschol_urls))
+    return eschol_urls
 
 
 def get_file_urls(p):
     media = p.get('media')
     if not media:
-        return None
+        return []
 
     file_urls = []
     for m in media:
@@ -117,13 +122,10 @@ def get_file_urls(p):
             if furl:
                 file_urls.append(furl)
 
-    if not file_urls:
-        return None
-    else:
-        return ','.join(file_urls)
+    return file_urls
 
 
 # =======================================
 # Stub for main
 if __name__ == "__main__":
-    main()
+    main2()
