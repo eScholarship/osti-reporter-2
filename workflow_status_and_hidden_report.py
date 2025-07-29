@@ -124,7 +124,7 @@ def get_file_urls(p):
 def get_file_urls(p):
     media = p.get('media')
     if not media:
-        return None
+        return []
 
     file_urls = []
     for m in media:
@@ -134,10 +134,7 @@ def get_file_urls(p):
             if furl:
                 file_urls.append(furl)
 
-    if not file_urls:
-        return None
-    else:
-        return ','.join(file_urls)
+    return file_urls
 
 
 # =======================================
