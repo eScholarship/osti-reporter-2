@@ -33,9 +33,6 @@ def main2():
           f"• {len(hidden_pubs)} hidden pubs.")
     print("\n================================")
 
-    print_item_info("'SV' status (not yet released)", sv_pubs)
-    print_item_info("Hidden", hidden_pubs)
-
 
 def print_item_info(problem, pubs):
     for pub in pubs:
@@ -106,6 +103,22 @@ def compile_eschol_urls(pub):
     eschol_urls = [u for u in eschol_urls if u is not None]
     eschol_urls = list(set(eschol_urls))
     return eschol_urls
+
+
+def get_file_urls(p):
+    media = p.get('media')
+    if not media:
+        return []
+
+    file_urls = []
+    for m in media:
+        files = m.get('files')
+        for f in files:
+            furl = f.get('url')
+            if furl:
+                file_urls.append(furl)
+
+    return file_urls
 
 
 def get_file_urls(p):

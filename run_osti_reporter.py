@@ -96,7 +96,7 @@ def process_new_osti_pubs(args, creds, elements_conn, log_folder):
     new_osti_pubs = transform_pubs.add_osti_data(new_osti_pubs, args.test)
 
     # Log transformed submissions
-    if args.full_logging:
+    if args.full_logging or args.test:
         write_logs.output_submissions(log_folder, new_osti_pubs)
 
     # If running in test mode, skip the submission step.
