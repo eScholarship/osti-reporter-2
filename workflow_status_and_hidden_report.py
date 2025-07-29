@@ -121,6 +121,25 @@ def get_file_urls(p):
     return file_urls
 
 
+def get_file_urls(p):
+    media = p.get('media')
+    if not media:
+        return None
+
+    file_urls = []
+    for m in media:
+        files = m.get('files')
+        for f in files:
+            furl = f.get('url')
+            if furl:
+                file_urls.append(furl)
+
+    if not file_urls:
+        return None
+    else:
+        return ','.join(file_urls)
+
+
 # =======================================
 # Stub for main
 if __name__ == "__main__":
