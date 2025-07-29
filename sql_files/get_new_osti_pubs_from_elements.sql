@@ -22,7 +22,7 @@ SELECT DISTINCT
 	p.[Type],
 	p.[publication-status],
 	pr.doi,
-	p.[name-of-conference],
+	-- p.[name-of-conference],
 	p.[parent-title],
 	FORMAT(p.[Reporting Date 1], 'MM/dd/yyyy') AS [Reporting Date 1],
 	FORMAT(pr.[publication-date], 'MM/dd/yyyy') AS [eschol Pub Date],
@@ -66,6 +66,23 @@ SELECT DISTINCT
 		THEN p.number
 		ELSE NULL
 	END AS [LBL Report Number],
+
+    -- Conference names aren't handled consistently,
+    -- so we check all the publication records for the field.
+	CASE
+		WHEN p.type not in ('Report', 'Poster', 'Conference papers')
+			THEN null
+		WHEN p.[name-of-conference] is not null
+			THEN p.[name-of-conference]
+		ELSE (
+			SELECT TOP 1
+			    conf_pr.[name-of-conference]
+			FROM
+			    [publication record] conf_pr
+			WHERE
+				conf_pr.[publication id] = p.id
+				AND conf_pr.[name-of-conference] is not null)
+		END AS [name-of-conference],
 
 	-- JSON fields, general note:
 	-- We're using these JSON fields to aggregate multiple rows from other tables
