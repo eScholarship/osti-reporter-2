@@ -61,7 +61,7 @@ def output_json_generic(log_folder, data, filename):
         out_file.write(json.dumps(data, indent=4, default=serialize_datetime))
 
 
-def print_final_report(new_osti_pubs, new_osti_pdfs, osti_metadata_updates, osti_pdf_updates):
+def print_final_report(new_osti_pubs, osti_metadata_updates, osti_pdf_updates):
 
     report_header = "\n ================ OSTI REPORTER: SUMMARY"
 
@@ -93,7 +93,7 @@ def print_final_report(new_osti_pubs, new_osti_pdfs, osti_metadata_updates, osti
     report_builder(new_osti_pubs, "new pubs submitted to OSTI.",
                    'response_success', 'response_json')
 
-    report_builder(new_osti_pdfs, "PDFs submitted for newly-added publications.",
+    report_builder(new_osti_pubs, "PDFs submitted for newly-added publications.",
                    'media_response_success', 'media_response_json')
 
     report_builder(osti_metadata_updates, "pubs with updated metadata sent to OSTI.",

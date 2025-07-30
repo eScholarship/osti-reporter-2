@@ -16,7 +16,6 @@ sleep_time = 3
 def main():
     # These lists are populated during the submission process.
     new_osti_pubs = None
-    new_osti_pdfs = None
     osti_metadata_updates = None
     osti_pdf_updates = None
 
@@ -49,7 +48,7 @@ def main():
 
     # Prints a digest of completed work
     write_logs.print_final_report(
-        new_osti_pubs, new_osti_pdfs, osti_metadata_updates, osti_pdf_updates)
+        new_osti_pubs, osti_metadata_updates, osti_pdf_updates)
 
     # Close connections.
     elements_conn.close()
