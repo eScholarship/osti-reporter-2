@@ -81,7 +81,7 @@ WHERE
 	OR os.[media_response_code] > 300
 	OR os.[prf_filename] != prf.[Filename]
 	OR os.[prf_size] != prf.[Size])
-	AND NOT os.[media_id_deleted] = 1
+	AND os.[media_id_deleted] is NULL
 
 	-- INDIVIDUAL UPDATES PUB ID LIST REPLACE
 
