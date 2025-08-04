@@ -239,6 +239,12 @@ def get_hidden_pubs(osti_creds):
 def get_comments(osti_creds, osti_id):
     req_url = f"{osti_creds['base_url']}/comments/{osti_id}"
     headers = {'Authorization': 'Bearer ' + osti_creds['token']}
+    response = requests.get(req_url, headers=headers)
+    return response
 
+
+def get_single_pub(osti_creds, osti_id):
+    req_url = f"{osti_creds['base_url']}/records/{osti_id}"
+    headers = {'Authorization': 'Bearer ' + osti_creds['token']}
     response = requests.get(req_url, headers=headers)
     return response

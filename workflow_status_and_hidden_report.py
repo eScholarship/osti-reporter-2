@@ -4,7 +4,7 @@ from pprint import pprint
 
 
 # =======================================
-def main2():
+def main():
     # ---------- GENERAL SETUP
     # Process args; Assign creds based on args; Create the log folder.
     args = program_setup.process_args()
@@ -75,17 +75,17 @@ def split_ts(ts):
 def print_comment(index, comment):
     def get_comment_state(s):
         if s == 'I':
-            return '[INFO]'
+            return 'INFO'
         elif s == 'O':
-            return '[OPEN ISSUE]'
+            return 'OPEN ISSUE'
         elif s == 'C':
-            return '[CLOSED ISSUE]'
+            return 'CLOSED ISSUE'
         else:
-            return '[???]'
+            return '???'
 
     state = get_comment_state(comment['state'])
     ts = split_ts(comment['date_added'])
-    print(f"[{index}] [{ts}] [{state}] :: {comment['comments'][0]['text']}")
+    print(f"[{ts}] [{state}] :: {comment['comments'][0]['text']}")
 
 
 def print_audit_log(index, audit):
@@ -93,8 +93,7 @@ def print_audit_log(index, audit):
     ts = split_ts(audit['audit_date'])
     messages = ';'.join(audit['messages'])
 
-    print(f"[{index}] [{ts}] [STATUS: {audit['status']}] "
-          f"[TYPE: {audit['type']}] :: {messages}")
+    print(f"[{ts}] [{audit['type']}] [{audit['status']}] :: {messages}")
 
 
 def compile_eschol_urls(pub):
@@ -143,4 +142,4 @@ def get_file_urls(p):
 # =======================================
 # Stub for main
 if __name__ == "__main__":
-    main2()
+    main()
