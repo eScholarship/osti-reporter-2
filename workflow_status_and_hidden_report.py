@@ -4,7 +4,7 @@ from pprint import pprint
 
 
 # =======================================
-def main2():
+def main():
     # ---------- GENERAL SETUP
     # Process args; Assign creds based on args; Create the log folder.
     args = program_setup.process_args()
@@ -142,4 +142,4 @@ def get_file_urls(p):
 # =======================================
 # Stub for main
 if __name__ == "__main__":
-    main2()
+    main()

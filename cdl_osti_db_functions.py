@@ -141,3 +141,39 @@ def convert_nulls_for_sql(pub):
             converted_pub[k] = pub[k]
 
     return converted_pub
+
+
+# Retrieves pubs with no DOIs from the past fiscal year
+def get_cdl_pubs_without_dois(mysql_creds):
+    mysql_conn = get_cdl_connection(mysql_creds)
+
+    # Load .sql file
+    try:
+        sql_file = open("sql_files/get_null_dois_from_cdl_db.sql")
+        sql_query = sql_file.read()
+        sql_query = sql_query.replace("table_replace", mysql_creds['table'])
+
+    except Exception as e:
+        print("ERROR WHILE READING OR OPENING .SQL FILE.")
+        raise e
+
+    # Open cursor and send query
+    with mysql_conn.cursor() as cursor:
+        print("Connected to eSchol MySQL DB. Getting osti_eschol db.")
+        cursor.execute(sql_query)
+        osti_submissions_without_dois = cursor.fetchall()
+
+    return osti_submissions_without_dois
+
+
+def update_with_osti_doi(creds, osti_id, osti_doi):
+    mysql_conn = get_cdl_connection(creds)
+    query = f'UPDATE {creds["table"]} ' \
+            f'SET osti_doi = "{osti_doi}" ' \
+            f'WHERE osti_id = {osti_id};'
+
+    with mysql_conn.cursor() as cursor:
+        cursor.execute(query)
+        mysql_conn.commit()
+
+    mysql_conn.close()
