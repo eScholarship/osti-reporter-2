@@ -131,7 +131,8 @@ def assign_creds(args):
     # OSTI Elink
     selected_creds['osti_api'] = {
         "base_url": env['OSTI_URL' + elink_cnx],
-        "token": env['OSTI_TOKEN' + elink_cnx]}
+        "token": env['OSTI_TOKEN' + elink_cnx],
+        "pdf_user_agent": env['PDF_USER_AGENT']}
 
     return selected_creds
 
