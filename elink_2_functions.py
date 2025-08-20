@@ -137,7 +137,12 @@ def post_media(osti_creds, pub):
 
     # Get the PDF file data from url
     pdf_filename = pub['File URL'].split('/')[-1]
-    pdf_response = requests.get(pub['File URL'], stream=True)
+    pdf_headers = {'user-agent': osti_creds['pdf_user_agent']}
+
+    pdf_response = requests.get(
+        pub['File URL'],
+        headers=pdf_headers,
+        stream=True)
     pdf_response.raw.decode_content = True
 
     mp_encoder = MultipartEncoder(
@@ -160,7 +165,12 @@ def put_media(osti_creds, pub):
 
     # Get the PDF file data from url
     pdf_filename = pub['File URL'].split('/')[-1]
-    pdf_response = requests.get(pub['File URL'], stream=True)
+    pdf_headers = {'user-agent': osti_creds['pdf_user_agent']}
+
+    pdf_response = requests.get(
+        pub['File URL'],
+        headers=pdf_headers,
+        stream=True)
     pdf_response.raw.decode_content = True
 
     mp_encoder = MultipartEncoder(
