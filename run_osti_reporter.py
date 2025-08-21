@@ -26,7 +26,8 @@ def main():
     log_folder = write_logs.create_log_folder()
 
     # Returns an open & running ssh server if needed, otherwise False.
-    ssh_server = program_setup.get_ssh_server(args, creds['ssh'])
+    if args.tunnel_needed:
+        ssh_server = program_setup.get_ssh_server(args, creds['ssh'])
 
     # Gets the db connections for Elements
     elements_conn = elements.get_elements_connection(creds['elements_reporting_db'])
@@ -52,7 +53,7 @@ def main():
 
     # Close connections.
     elements_conn.close()
-    if ssh_server:
+    if args.tunnel_needed:
         ssh_server.stop()
 
     print("\nProgram complete. Exiting.\n\n")

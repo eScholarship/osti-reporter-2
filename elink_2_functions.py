@@ -105,6 +105,9 @@ def submit_media_updates(updated_media_pubs, osti_creds, mysql_creds):
             if pub['media_response_code'] == 404:
                 print("Updating CDL DB to indicate a deleted Media ID.")
                 cdl.update_media_deleted_id(pub, mysql_creds)
+            elif pub['media_response_code'] == 409:
+                print("Note: 409 media response code, indicating the pdf is already "
+                      "on file with the metadata record. Skipping CDL DB update.")
             else:
                 print("Updating CDL DB with Media data (includes non-404 failure codes).")
                 cdl.update_media_submission(pub, mysql_creds)
