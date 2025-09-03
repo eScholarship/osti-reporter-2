@@ -103,14 +103,15 @@ def assign_creds(args):
         'driver': env['ELEMENTS_REPORTING_DB_DRIVER' + input_cnx]}
 
     # SSH tunnel
-    selected_creds['ssh'] = {
-        'host': env['SSH_HOST' + input_cnx],
-        'username': env['SSH_USERNAME' + input_cnx],
-        'password': env['SSH_PASSWORD' + input_cnx],
-        'remote': (env['SSH_REMOTE_URL' + input_cnx],
-                   env['SSH_REMOTE_PORT' + input_cnx]),
-        'local': (env['SSH_LOCAL_URL' + input_cnx],
-                  env['SSH_LOCAL_PORT' + input_cnx])}
+    if args.tunnel_needed:
+        selected_creds['ssh'] = {
+            'host': env['SSH_HOST' + input_cnx],
+            'username': env['SSH_USERNAME' + input_cnx],
+            'password': env['SSH_PASSWORD' + input_cnx],
+            'remote': (env['SSH_REMOTE_URL' + input_cnx],
+                       env['SSH_REMOTE_PORT' + input_cnx]),
+            'local': (env['SSH_LOCAL_URL' + input_cnx],
+                      env['SSH_LOCAL_PORT' + input_cnx])}
 
     # CDL MySQL for input (read)
     selected_creds['cdl_db_read'] = {
@@ -131,30 +132,28 @@ def assign_creds(args):
     # OSTI Elink
     selected_creds['osti_api'] = {
         "base_url": env['OSTI_URL' + elink_cnx],
-        "token": env['OSTI_TOKEN' + elink_cnx]}
+        "token": env['OSTI_TOKEN' + elink_cnx],
+        "pdf_user_agent": env['PDF_USER_AGENT']}
 
     return selected_creds
 
 
 def get_ssh_server(args, ssh_creds):
-    if args.tunnel_needed is False:
-        return False
 
-    else:
-        print("Opening SSH tunnel.")
-        from sshtunnel import SSHTunnelForwarder
+    print("Opening SSH tunnel.")
+    from sshtunnel import SSHTunnelForwarder
 
-        try:
-            server = SSHTunnelForwarder(
-                ssh_creds['host'],
-                ssh_username=ssh_creds['username'],
-                allow_agent=True,
-                remote_bind_address=ssh_creds['remote'],
-                local_bind_address=ssh_creds['local'])
+    try:
+        server = SSHTunnelForwarder(
+            ssh_creds['host'],
+            ssh_username=ssh_creds['username'],
+            allow_agent=True,
+            remote_bind_address=ssh_creds['remote'],
+            local_bind_address=ssh_creds['local'])
 
-            server.start()
-            return server
+        server.start()
+        return server
 
-        except Exception as e:
-            print(e)
-            exit(1)
+    except Exception as e:
+        print(e)
+        exit(1)
