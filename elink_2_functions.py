@@ -105,6 +105,9 @@ def submit_media_updates(updated_media_pubs, osti_creds, mysql_creds):
             if pub['media_response_code'] == 404:
                 print("Updating CDL DB to indicate a deleted Media ID.")
                 cdl.update_media_deleted_id(pub, mysql_creds)
+            elif pub['media_response_code'] == 409:
+                print("Note: 409 media response code, indicating the pdf is already "
+                      "on file with the metadata record. Skipping CDL DB update.")
             else:
                 print("Updating CDL DB with Media data (includes non-404 failure codes).")
                 cdl.update_media_submission(pub, mysql_creds)
@@ -137,7 +140,12 @@ def post_media(osti_creds, pub):
 
     # Get the PDF file data from url
     pdf_filename = pub['File URL'].split('/')[-1]
-    pdf_response = requests.get(pub['File URL'], stream=True)
+    pdf_headers = {'user-agent': osti_creds['pdf_user_agent']}
+
+    pdf_response = requests.get(
+        pub['File URL'],
+        headers=pdf_headers,
+        stream=True)
     pdf_response.raw.decode_content = True
 
     mp_encoder = MultipartEncoder(
@@ -160,7 +168,12 @@ def put_media(osti_creds, pub):
 
     # Get the PDF file data from url
     pdf_filename = pub['File URL'].split('/')[-1]
-    pdf_response = requests.get(pub['File URL'], stream=True)
+    pdf_headers = {'user-agent': osti_creds['pdf_user_agent']}
+
+    pdf_response = requests.get(
+        pub['File URL'],
+        headers=pdf_headers,
+        stream=True)
     pdf_response.raw.decode_content = True
 
     mp_encoder = MultipartEncoder(
