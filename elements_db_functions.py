@@ -34,6 +34,11 @@ def create_temp_table_in_elements(conn, osti_submitted_db):
             chunks.append(chunk)
             del osdb[:chunk_size]
         chunks.append(osdb)
+
+        # Prevents an error when submission table rows are multiples of 500
+        if len(chunks[-1]) == 0:
+            chunks.pop()
+
         return chunks
 
     # Helper -- MSSQL only accepts datetime/timestamp with 3 digits of fractional time
