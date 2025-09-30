@@ -114,14 +114,14 @@ SELECT DISTINCT
 	-- Grants JSON
 	(SELECT
 		'SPONSOR' AS "type",
-		g.[funder-name] AS "name"
+		g.[funder name] AS "name"
 	FROM
 		[Grant] g
 			JOIN [Grant Publication Relationship] gpr
 				ON g.id = gpr.[Grant ID]
 	WHERE
 		p.id = gpr.[Publication ID]
-		AND g.[funder-name] LIKE '%USDOE%'
+		AND g.[funder name] LIKE '%USDOE%'
 
 	FOR JSON AUTO
 	) AS [grants],
@@ -150,7 +150,7 @@ FROM
 		ON p.ID = gpr.[Publication ID]
 	JOIN [Grant] g
 		ON g.ID = gpr.[Grant ID]
-		AND g.[funder-name] LIKE '%USDOE%'
+		AND g.[funder name] LIKE '%USDOE%'
 
 	-- Pubs w/ LBL authors only
 	JOIN [Publication User Relationship] pur
