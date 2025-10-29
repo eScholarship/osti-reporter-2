@@ -9,7 +9,7 @@ def get_cdl_connection(mysql_creds):
     # connect to the mySql db
     try:
         mysql_conn = pymysql.connect(
-            host=mysql_creds['host'],
+            host=mysql_creds['server'],
             user=mysql_creds['user'],
             password=mysql_creds['password'],
             database=mysql_creds['database'],
