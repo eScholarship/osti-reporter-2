@@ -110,12 +110,12 @@ def assign_creds(args):
     # CDL MySQL for input (read)
     selected_creds['cdl_db_read'] = get_ssm_parameters(
         f"/pub-oapi-tools/tools-rds/{input_cnx}",
-        ['user', 'password', 'server', 'port', 'database', 'driver'])
+        ['user', 'password', 'server', 'port', 'database', 'driver', 'osti-table'])
 
     # CDL MySQL for output (write)
     selected_creds['cdl_db_write'] = get_ssm_parameters(
         f"/pub-oapi-tools/tools-rds/{output_cnx}",
-        ['user', 'password', 'server', 'port', 'database', 'driver'])
+        ['user', 'password', 'server', 'port', 'database', 'driver', 'osti-table'])
 
     # OSTI Elink
     selected_creds['osti_api'] = get_ssm_parameters(

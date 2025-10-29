@@ -29,7 +29,7 @@ def get_cdl_osti_db(mysql_creds):
     try:
         sql_file = open("sql_files/get_osti_db_from_eschol.sql")
         sql_query = sql_file.read()
-        sql_query = sql_query.replace("table_replace", mysql_creds['table'])
+        sql_query = sql_query.replace("table_replace", mysql_creds['osti-table'])
 
     except Exception as e:
         print("ERROR WHILE READING OR OPENING .SQL FILE.")
@@ -52,7 +52,7 @@ def insert_new_metadata_submission(pub, mysql_creds):
         pub = convert_nulls_for_sql(pub)
 
         # Build the query
-        insert_query = (f"""INSERT INTO {mysql_creds['table']} 
+        insert_query = (f"""INSERT INTO {mysql_creds['osti-table']} 
             (date_stamp, eschol_ark, osti_id,
             doi, lbnl_report_no, elements_id,
             eschol_id, eschol_pr_modified_when) VALUES \n""")
@@ -78,7 +78,7 @@ def update_osti_db_metadata(pub, mysql_creds):
         print(f"Updating Elements ID:{pub['id']}, OSTI ID:{pub['osti_id']} with new metadata.")
 
         pub = convert_nulls_for_sql(pub)
-        update_query = (f"""UPDATE {mysql_creds["table"]} SET
+        update_query = (f"""UPDATE {mysql_creds["osti-table"]} SET
                         eschol_ark='{pub['ark']}',
                         doi='{pub['doi']}',
                         lbnl_report_no='{pub['LBL Report Number']}',
@@ -98,7 +98,7 @@ def update_media_submission(pub, mysql_creds):
     with mysql_conn.cursor() as cursor:
         pub = convert_nulls_for_sql(pub)
 
-        update_query = (f"""UPDATE {mysql_creds["table"]} SET 
+        update_query = (f"""UPDATE {mysql_creds["osti-table"]} SET 
                         media_response_code={pub['media_response_code']},
                         media_id={pub['media_id']},
                         media_file_id={pub['media_file_id']},
@@ -120,7 +120,7 @@ def update_media_deleted_id(pub, mysql_creds):
     with mysql_conn.cursor() as cursor:
         pub = convert_nulls_for_sql(pub)
 
-        update_query = (f"""UPDATE {mysql_creds["table"]} SET 
+        update_query = (f"""UPDATE {mysql_creds["osti-table"]} SET 
                         media_id_deleted=true
                         WHERE osti_id={pub['osti_id']};""")
 
@@ -151,7 +151,7 @@ def get_cdl_pubs_without_dois(mysql_creds):
     try:
         sql_file = open("sql_files/get_null_dois_from_cdl_db.sql")
         sql_query = sql_file.read()
-        sql_query = sql_query.replace("table_replace", mysql_creds['table'])
+        sql_query = sql_query.replace("table_replace", mysql_creds['osti-table'])
 
     except Exception as e:
         print("ERROR WHILE READING OR OPENING .SQL FILE.")
@@ -168,7 +168,7 @@ def get_cdl_pubs_without_dois(mysql_creds):
 
 def update_with_osti_doi(creds, osti_id, osti_doi):
     mysql_conn = get_cdl_connection(creds)
-    query = f'UPDATE {creds["table"]} ' \
+    query = f'UPDATE {creds["osti-table"]} ' \
             f'SET osti_doi = "{osti_doi}" ' \
             f'WHERE osti_id = {osti_id};'
 
