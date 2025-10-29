@@ -12,7 +12,7 @@ def get_cdl_connection(mysql_creds):
             host=mysql_creds['server'],
             user=mysql_creds['user'],
             password=mysql_creds['password'],
-            database=mysql_creds['database'],
+            database=mysql_creds['osti-db'],
             cursorclass=pymysql.cursors.DictCursor)
 
         return mysql_conn
