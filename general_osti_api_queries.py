@@ -16,7 +16,7 @@ def main2():
 
 
 def general_api_query(osti_creds):
-    req_url = f"{osti_creds['base_url']}/records"
+    req_url = f"{osti_creds['endpoint']}/records"
     headers = {'Authorization': 'Bearer ' + osti_creds['token']}
     params = {'site_ownership_code': 'LBNLSCH',
               'date_first_submitted_from': '06/01/2024'}

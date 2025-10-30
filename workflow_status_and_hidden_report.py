@@ -43,7 +43,7 @@ def print_item_info(problem, pubs):
         print(f"\nPROBLEM: {problem}")
         print(f"OSTI ID: {pub['osti_id']}")
         print(f"OSTI URL: https://www.osti.gov/elink/record/{pub['osti_id']}")
-        print(f"DOI: https://doi.org/{pub['doi']}")
+        print(f"DOI: https://doi.org/{pub.get('doi')}")
 
         eschol_urls = compile_eschol_urls(pub)
         if eschol_urls:

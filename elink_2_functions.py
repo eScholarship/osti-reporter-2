@@ -122,35 +122,32 @@ def submit_media_updates(updated_media_pubs, osti_creds, mysql_creds):
 
 def post_metadata(osti_creds, pub):
     # Build the request & send it to OSTI
-    req_url = f"{osti_creds['base_url']}/records/submit"
+    req_url = f"{osti_creds['endpoint']}/records/submit"
     headers = {'Authorization': 'Bearer ' + osti_creds['token']}
     response = requests.post(req_url, json=pub['submission_json'], headers=headers)
     return response
 
 
 def put_metadata(osti_creds, pub):
-    req_url = f"{osti_creds['base_url']}/records/{pub['osti_id']}/submit"
+    req_url = f"{osti_creds['endpoint']}/records/{pub['osti_id']}/submit"
     headers = {'Authorization': 'Bearer ' + osti_creds['token']}
     response = requests.put(req_url, json=pub['submission_json'], headers=headers)
     return response
 
 
 def post_media(osti_creds, pub):
-    req_url = f"{osti_creds['base_url']}/media/{pub['osti_id']}"
+    req_url = f"{osti_creds['endpoint']}/media/{pub['osti_id']}"
 
     # Get the PDF file data from url
     pdf_filename = pub['File URL'].split('/')[-1]
-    pdf_headers = {'user-agent': osti_creds['pdf_user_agent']}
+    pdf_headers = {'user-agent': osti_creds['pdf-user-agent']}
 
     pdf_response = requests.get(
-        pub['File URL'],
-        headers=pdf_headers,
-        stream=True)
+        pub['File URL'], headers=pdf_headers, stream=True)
     pdf_response.raw.decode_content = True
 
     mp_encoder = MultipartEncoder(
-        fields={'file': (pdf_filename, pdf_response.content, 'application/pdf')}
-    )
+        fields={'file': (pdf_filename, pdf_response.content, 'application/pdf')})
 
     headers = {'Authorization': 'Bearer ' + osti_creds['token'],
                'Content-Type': mp_encoder.content_type}
@@ -164,11 +161,11 @@ def post_media(osti_creds, pub):
 
 
 def put_media(osti_creds, pub):
-    req_url = f"{osti_creds['base_url']}/media/{pub['osti_id']}/{pub['media_id']}"
+    req_url = f"{osti_creds['endpoint']}/media/{pub['osti_id']}/{pub['media_id']}"
 
     # Get the PDF file data from url
     pdf_filename = pub['File URL'].split('/')[-1]
-    pdf_headers = {'user-agent': osti_creds['pdf_user_agent']}
+    pdf_headers = {'user-agent': osti_creds['pdf-user-agent']}
 
     pdf_response = requests.get(
         pub['File URL'],
@@ -226,7 +223,7 @@ def update_pub_with_media_response(pub, media_response):
 
 
 def get_pubs_by_workflow_status(osti_creds, workflow_status):
-    req_url = f"{osti_creds['base_url']}/records"
+    req_url = f"{osti_creds['endpoint']}/records"
     headers = {'Authorization': 'Bearer ' + osti_creds['token']}
     params = {
         'site_ownership_code': 'LBNLSCH',
@@ -238,7 +235,7 @@ def get_pubs_by_workflow_status(osti_creds, workflow_status):
 
 
 def get_hidden_pubs(osti_creds):
-    req_url = f"{osti_creds['base_url']}/records"
+    req_url = f"{osti_creds['endpoint']}/records"
     headers = {'Authorization': 'Bearer ' + osti_creds['token']}
     params = {
         'site_ownership_code': 'LBNLSCH',
@@ -250,14 +247,14 @@ def get_hidden_pubs(osti_creds):
 
 
 def get_comments(osti_creds, osti_id):
-    req_url = f"{osti_creds['base_url']}/comments/{osti_id}"
+    req_url = f"{osti_creds['endpoint']}/comments/{osti_id}"
     headers = {'Authorization': 'Bearer ' + osti_creds['token']}
     response = requests.get(req_url, headers=headers)
     return response
 
 
 def get_single_pub(osti_creds, osti_id):
-    req_url = f"{osti_creds['base_url']}/records/{osti_id}"
+    req_url = f"{osti_creds['endpoint']}/records/{osti_id}"
     headers = {'Authorization': 'Bearer ' + osti_creds['token']}
     response = requests.get(req_url, headers=headers)
     return response
