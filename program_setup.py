@@ -119,7 +119,7 @@ def assign_creds(args):
 
     # OSTI Elink
     selected_creds['osti_api'] = get_ssm_parameters(
-        f"/pub-oapi-tools/osti-elink/{elink_cnx}",
+        f"/pub-oapi-tools/elink-api/{elink_cnx}",
         ['endpoint', 'token', 'pdf-user-agent'])
 
     return selected_creds
