@@ -1,6 +1,9 @@
 import boto3
 import pymysql
+import requests
 from pprint import pprint
+
+test_mode = True
 
 queue_update_query = """
 INSERT INTO eschol_api_queue
@@ -44,9 +47,14 @@ def get_creds():
         f"/pub-oapi-tools/tools-rds/prod",
         ['user', 'password', 'server', 'port', 'osti-db', 'driver', 'osti-table'])
 
-    selected_creds['eschol_api'] = get_ssm_parameters(
-        f"/pub-oapi-tools/eschol-api/qa",
-        ['endpoint', 'priv_key', 'cookie'])
+    if test_mode:
+        selected_creds['eschol_api'] = get_ssm_parameters(
+            f"/pub-oapi-tools/eschol-api/qa",
+            ['endpoint', 'priv-key', 'cookie'])
+    else:
+        selected_creds['eschol_api'] = get_ssm_parameters(
+            f"/pub-oapi-tools/eschol-api/prod",
+            ['endpoint', 'priv-key', 'cookie'])
 
     return selected_creds
 
@@ -79,29 +87,56 @@ def main():
         print("Queueing new OSTI submissions...")
         cursor.execute(queue_update_query)
         print(f"{cursor.rowcount} rows enqueued.")
-
-        run_updates(cursor)
+        run_updates(cursor, creds['eschol_api'])
 
     mysql_conn.close()
 
 
 # =======================================
 # Main update loop
-def run_updates(cursor):
+def run_updates(cursor, eschol_creds):
+    print("Running looped updates.\n")
+    queue_table = 'eschol_api_queue_test' if test_mode else 'eschol_api_queue'
+
     print("Querying for next row...")
-    get_next_queue_row = "select * from eschol_api_queue_test where updated=0 limit 1;"
+    get_next_queue_row = f"select * from {queue_table} where updated=0 limit 1;"
+
     cursor.execute(get_next_queue_row)
     row = cursor.fetchone()
     print(row)
 
-
-
-
+    update_eschol_api(row, eschol_creds)
 
     print("Updating queue row...")
-    update_queue_row = f"update eschol_api_queue_test set updated=0 where id={row['id']};"
+    update_queue_row = f"update {queue_table} set updated=1 where id={row['id']};"
     cursor.execute(update_queue_row)
     print(f"{cursor.rowcount} row updated.")
+
+
+# =======================================
+def update_eschol_api(row, creds):
+    test_query = 'query getItem($input_id: ID!){ item(id:$input_id) { id, title, rights } }'
+    item_vars = {'input_id': f"ark:/13030/{row['eschol_id']}"}
+
+    # Set headers cookies
+    headers = dict(PRIVILEGED=creds['priv-key'])
+    cookies = dict(ACCESS_COOKIE=creds['cookie']) if test_mode else {}
+
+    # Send the req
+    response = requests.post(
+        url=creds['endpoint'],
+        headers=headers,
+        cookies=cookies,
+        json={"query": test_query,
+              "variables": item_vars})
+
+    # Print response
+    print(f"Response: {response.status_code} -- {response.reason}")
+    print(response)
+    if response.status_code != 200:
+        print(response.text)
+        print("----------------------------------------")
+
 
 # =======================================
 # Stub for main
