@@ -19,6 +19,7 @@ where
 		from eschol_api_queue eaq);
 """
 
+
 # =======================================
 # More-or-less lifted from program_setup.py
 def get_creds():
@@ -26,7 +27,6 @@ def get_creds():
     session = boto3.Session()
 
     def get_ssm_parameters(folder, names):
-        print("Connect to SSM for parameters")
         ssm_client = session.client(service_name='ssm', region_name='us-west-2')
 
         param_names = [f"{folder}/{name}" for name in names]
@@ -60,7 +60,8 @@ def get_cdl_connection(mysql_creds):
             user=mysql_creds['user'],
             password=mysql_creds['password'],
             database=mysql_creds['osti-db'],
-            cursorclass=pymysql.cursors.DictCursor)
+            cursorclass=pymysql.cursors.DictCursor,
+            autocommit=True)
 
         return mysql_conn
     except Exception as e:
@@ -87,11 +88,20 @@ def main():
 # =======================================
 # Main update loop
 def run_updates(cursor):
-    get_next_queue_row = "select * from eschol_api_queue where updated = 0 limit 1;"
+    print("Querying for next row...")
+    get_next_queue_row = "select * from eschol_api_queue_test where updated=0 limit 1;"
     cursor.execute(get_next_queue_row)
-    update_row = cursor.fetchall()[0]
-    pprint(update_row)
+    row = cursor.fetchone()
+    print(row)
 
+
+
+
+
+    print("Updating queue row...")
+    update_queue_row = f"update eschol_api_queue_test set updated=0 where id={row['id']};"
+    cursor.execute(update_queue_row)
+    print(f"{cursor.rowcount} row updated.")
 
 # =======================================
 # Stub for main
