@@ -124,9 +124,39 @@ def update_eschol_api(row, creds):
 
     mutation_query = "mutation updateRights($input: UpdateRightsInput!){ updateRights(input: $input) { message } }"
     mutation_vars = {
-        'input' : {
+        'input': {
             'id': 'qtttrmz60v',
-            'rights' : 'https://creativecommons.org/licenses/by-nc/4.0/'}}
+            'rights': 'https://creativecommons.org/licenses/by-nc/4.0/'}}
+
+    mutation_query = "mutation updateRights($input: UpdateRightsInput!){ updateRights(input: $input) { message } }"
+    # mutation_vars = {
+    #     'input': {
+    #         'id': 'qtttrmz60v',
+    #         'rights': 'https://creativecommons.org/licenses/by-nc/4.0/'}}
+
+    mutation_query = """
+    mutation {
+  updateLocalIDs(
+    input: {
+    	id: "qtttrmz60v"
+    	localIDs: [
+        {
+          id: "3000968",
+          scheme: OA_PUB_ID
+        },
+        {
+          id: "test_value",
+          scheme: OTHER_ID,
+          subScheme: "osti_id"
+        },    
+      ]
+  	}
+  )
+  {
+    message
+  }
+}
+    """
 
     # Set headers cookies
     headers = dict(PRIVILEGED=creds['priv-key'])
@@ -134,7 +164,9 @@ def update_eschol_api(row, creds):
 
 #    json = {"query": test_query, "variables": test_vars} if test_mode else \
  #       {"query": mutation_query, "variables": mutation_vars}
-    json = {"query": mutation_query, "variables": mutation_vars}
+
+    # json = {"query": mutation_query, "variables": mutation_vars}
+    json = {"query": mutation_query}
 
     # Send the req
     response = requests.post(
