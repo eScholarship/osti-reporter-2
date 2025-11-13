@@ -107,15 +107,18 @@ def run_updates(cursor, eschol_creds):
 
     update_eschol_api(row, eschol_creds)
 
-    print("Updating queue row...")
-    update_queue_row = f"update {queue_table} set updated=1 where id={row['id']};"
-    cursor.execute(update_queue_row)
-    print(f"{cursor.rowcount} row updated.")
+    if not test_mode:
+        print("Updating queue row...")
+        update_queue_row = f"update {queue_table} set updated=1 where id={row['id']};"
+        cursor.execute(update_queue_row)
+        print(f"{cursor.rowcount} row updated.")
 
 
 # =======================================
 def update_eschol_api(row, creds):
     test_query = 'query getItem($input_id: ID!){ item(id:$input_id) { id, title, rights } }'
+    row['eschol_id'] = 'qtttrmz60v';
+    print(f"escholID: {row['eschol_id']}")
     item_vars = {'input_id': f"ark:/13030/{row['eschol_id']}"}
 
     # Set headers cookies
@@ -133,6 +136,7 @@ def update_eschol_api(row, creds):
     # Print response
     print(f"Response: {response.status_code} -- {response.reason}")
     print(response)
+    print(response.text)
     if response.status_code != 200:
         print(response.text)
         print("----------------------------------------")
