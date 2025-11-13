@@ -105,6 +105,7 @@ def run_updates(cursor, eschol_creds):
     row = cursor.fetchone()
     print(row)
 
+    print("Updating eSchol API...")
     update_eschol_api(row, eschol_creds)
 
     if not test_mode:
@@ -119,27 +120,36 @@ def update_eschol_api(row, creds):
     test_query = 'query getItem($input_id: ID!){ item(id:$input_id) { id, title, rights } }'
     row['eschol_id'] = 'qtttrmz60v';
     print(f"escholID: {row['eschol_id']}")
-    item_vars = {'input_id': f"ark:/13030/{row['eschol_id']}"}
+    test_vars = {'input_id': f"ark:/13030/{row['eschol_id']}"}
+
+    mutation_query = "mutation updateRights($input: UpdateRightsInput!){ updateRights(input: $input) { message } }"
+    mutation_vars = {
+        'input' : {
+            'id': 'qtttrmz60v',
+            'rights' : 'https://creativecommons.org/licenses/by-nc/4.0/'}}
 
     # Set headers cookies
     headers = dict(PRIVILEGED=creds['priv-key'])
     cookies = dict(ACCESS_COOKIE=creds['cookie']) if test_mode else {}
+
+#    json = {"query": test_query, "variables": test_vars} if test_mode else \
+ #       {"query": mutation_query, "variables": mutation_vars}
+    json = {"query": mutation_query, "variables": mutation_vars}
 
     # Send the req
     response = requests.post(
         url=creds['endpoint'],
         headers=headers,
         cookies=cookies,
-        json={"query": test_query,
-              "variables": item_vars})
+        json=json)
 
     # Print response
     print(f"Response: {response.status_code} -- {response.reason}")
     print(response)
     print(response.text)
-    if response.status_code != 200:
-        print(response.text)
-        print("----------------------------------------")
+    print("----------------------------------------")
+
+    exit()
 
 
 # =======================================
