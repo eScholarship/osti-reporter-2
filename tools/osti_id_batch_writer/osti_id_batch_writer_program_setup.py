@@ -4,7 +4,7 @@ import pymysql
 
 # =======================================
 # More-or-less lifted from program_setup.py
-def get_creds():
+def get_creds(test_mode):
     # Get AWS session
     session = boto3.Session()
 
