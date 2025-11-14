@@ -4,7 +4,7 @@ from pprint import pprint
 from copy import deepcopy
 
 test_mode = True
-reset_mode = True
+reset_mode = False
 
 
 # =======================================
@@ -113,9 +113,14 @@ def send_local_id_updates(row, creds, item_values):
 
     # This is for testing, it removes any localIDs with "osti" subschemes
     if reset_mode:
-        item_values['localIDs'] = [
-            i for i in item_values['localIDs']
-            if 'osti' not in i['subScheme'].lower()]
+        reset_local_ids = []
+        for local_id in item_values['localIDs']:
+            if local_id.get('subScheme') is None:
+                reset_local_ids.append(local_id)
+            else:
+                if 'osti' not in local_id.get('subScheme').lower():
+                    reset_local_ids.append(local_id)
+        item_values['localIDs'] = reset_local_ids
 
     mutation_query = """
         mutation updateLocalIDs($input: UpdateLocalIDsInput!) { 
