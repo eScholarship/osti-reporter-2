@@ -1,8 +1,10 @@
+import osti_id_batch_writer_program_setup as setup
 import requests
 from pprint import pprint
-import osti_id_batch_writer_program_setup as setup
+from copy import deepcopy
 
 test_mode = True
+reset_mode = True
 
 
 # =======================================
@@ -40,13 +42,14 @@ def run_updates(cursor, eschol_api_creds):
 
     print("Grabbing item values from eSchol API...")
     item_values = get_item_values(row, eschol_api_creds)
+    old_item_values = deepcopy(item_values)
 
     print("Sending OSTI ID update to eSchol API...")
     send_local_id_updates(row, eschol_api_creds, item_values)
 
     print("Verifying existing local IDs were preserved...")
     updated_item_values = get_item_values(row, eschol_api_creds)
-    verify_update(item_values, updated_item_values)
+    verify_update(old_item_values, updated_item_values)
 
     if not test_mode:
         print("Updating queue row...")
@@ -63,14 +66,15 @@ def verify_update(old_values, new_values):
             for i in range(len(o)):
                 compare_values(o[i], n[i])
         else:
-            print(f"{o} | {n}")
+            print(f"{o}\t\t{n}")
             if o != n:
-                print("MISMATCHING VALUES.")
-                pprint(o)
-                pprint(n)
-                raise 'Exiting.'
-
-    compare_values(old_values, new_values)
+                raise 'OLD VALUES NOT FOUND IN NEW ESCHOL ITEM. Exiting.'
+    if reset_mode:
+        print("Running in reset mode -- Old and new values:")
+        pprint(old_values)
+        pprint(new_values)
+    else:
+        compare_values(old_values, new_values)
     exit()
 
 
@@ -106,6 +110,12 @@ def send_local_id_updates(row, creds, item_values):
         'id': f"{row['osti_id']}",
         'scheme': 'OTHER_ID',
         'subScheme': 'osti'})
+
+    # This is for testing, it removes any localIDs with "osti" subschemes
+    if reset_mode:
+        item_values['localIDs'] = [
+            i for i in item_values['localIDs']
+            if 'osti' not in i['subScheme'].lower()]
 
     mutation_query = """
         mutation updateLocalIDs($input: UpdateLocalIDsInput!) { 
