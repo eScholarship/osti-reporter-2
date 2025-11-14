@@ -36,20 +36,42 @@ def run_updates(cursor, eschol_api_creds):
     print("Querying osti_id queue for next row...")
     row = get_next_queue_row(cursor)
     row['eschol_id'] = 'qtttrmz60v'
-    row['osti_id'] = 'test-777'
+    row['osti_id'] = 'test-999'
 
     print("Grabbing item values from eSchol API...")
     item_values = get_item_values(row, eschol_api_creds)
 
     print("Sending OSTI ID update to eSchol API...")
-    local_ids = send_local_id_updates(row, eschol_api_creds, item_values)
+    send_local_id_updates(row, eschol_api_creds, item_values)
 
-    print("Updating eSchol API...")
-    update_eschol_api(row, local_ids, eschol_api_creds)
+    print("Verifying existing local IDs were preserved...")
+    updated_item_values = get_item_values(row, eschol_api_creds)
+    verify_update(item_values, updated_item_values)
 
     if not test_mode:
         print("Updating queue row...")
         update_queue_row(cursor, row)
+
+
+# =======================================
+def verify_update(old_values, new_values):
+    def compare_values(o, n):
+        if type(o) is dict:
+            for key in o.keys():
+                compare_values(o.get(key), n.get(key))
+        elif type(o) is list:
+            for i in range(len(o)):
+                compare_values(o[i], n[i])
+        else:
+            print(f"{o} | {n}")
+            if o != n:
+                print("MISMATCHING VALUES.")
+                pprint(o)
+                pprint(n)
+                raise 'Exiting.'
+
+    compare_values(old_values, new_values)
+    exit()
 
 
 # =======================================
@@ -73,7 +95,6 @@ def get_item_values(row, creds):
     local_id_vars = {'input_id': f"ark:/13030/{row['eschol_id']}"}
 
     response = query_eschol_api(creds, local_id_query, local_id_vars)
-    pprint(response['data']['item'])
     return response['data']['item']
 
 
@@ -91,17 +112,8 @@ def send_local_id_updates(row, creds, item_values):
             updateLocalIDs(input: $input) { message } 
         }"""
 
-    mutation_vars = {
-        'input': {
-            'id': item_values['id'],
-            'localIDs': item_values['local_ids']}}
-
-    response = query_eschol_api(creds, mutation_query, mutation_vars)
-    pprint(response)
-    exit()
-
-    return response['data']['item']
-
+    mutation_vars = {'input': item_values}
+    query_eschol_api(creds, mutation_query, mutation_vars)
 
 
 # =======================================
@@ -113,42 +125,7 @@ def update_queue_row(cursor, row):
 
 
 # =======================================
-def update_eschol_api(row, creds):
-    test_query = 'query getItem($input_id: ID!){ item(id:$input_id) { id, title, rights } }'
-    test_vars = {'input_id': f"ark:/13030/{row['eschol_id']}"}
-    row['eschol_id'] = 'qtttrmz60v'
-    print(f"escholID: {row['eschol_id']}")
-
-    mutation_query = """
-        mutation updateLocalIDs($input: UpdateLocalIDsInput!) { 
-            updateLocalIDs(input: $input) { message } 
-        }"""
-
-    mutation_vars = {
-        'input': {
-            'id': 'qtttrmz60v',
-            'localIDs': [
-                {
-                    'id': "3000968",
-                    'scheme': "OA_PUB_ID"
-                },
-                {
-                    'id': "test_value_4",
-                    'scheme': "OTHER_ID",
-                    'subScheme': "osti_id"
-                }
-            ]
-        }}
-
-
-
-#    json = {"query": test_query, "variables": test_vars} if test_mode else \
-#       {"query": mutation_query, "variables": mutation_vars}
-
-    json = {"query": mutation_query, "variables": mutation_vars}
-
-
-# =======================================
+# Generic function for sending HTTP Reqs to eSchol GraphQL API
 def query_eschol_api(creds, query, vars):
     # Set headers cookies
     headers = dict(PRIVILEGED=creds['priv-key'])
@@ -165,8 +142,8 @@ def query_eschol_api(creds, query, vars):
         json=json)
 
     # Print response
-    print(f"Response: {response.status_code} -- {response.reason}")
-    print(response.text)
+    print(f"Response: {response.status_code} {response.reason}")
+    pprint(response.json())
     if response.status_code != 200:
         raise "Non-200 eSchol API response. Exiting"
     else:
