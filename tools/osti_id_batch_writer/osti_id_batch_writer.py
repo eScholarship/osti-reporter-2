@@ -4,6 +4,7 @@ from pprint import pprint
 from copy import deepcopy
 
 test_mode = True
+verbose_mode = True
 reset_mode = False
 
 
@@ -14,10 +15,10 @@ def main():
     mysql_conn = setup.get_cdl_connection(creds['cdl_db'])
 
     with mysql_conn.cursor() as cursor:
-        print("Queueing new OSTI submissions...")
+        print("Enqueueing new OSTI submissions.")
         enqueue_new_osti_submissions(cursor)
 
-        print("Running updates loop...\n")
+        print("Running updates loop.\n")
         run_updates(cursor, creds['eschol_api'])
 
     mysql_conn.close()
@@ -45,25 +46,24 @@ def enqueue_new_osti_submissions(cursor):
 # =======================================
 # Main update loop
 def run_updates(cursor, eschol_api_creds):
-    print("Querying osti_id queue for next row...")
+    print("Querying update queue for the next row to update.")
     row = get_next_queue_row(cursor)
-    row['eschol_id'] = 'qtttrmz60v'
-    row['osti_id'] = 'test-999'
 
-    print("Grabbing item values from eSchol API...")
+    print("Grabbing item values from eSchol API.")
     item_values = get_item_values(row, eschol_api_creds)
+
+    print("Saving old values for later verification.")
     old_item_values = deepcopy(item_values)
 
-    print("Sending OSTI ID update to eSchol API...")
+    print("Sending OSTI ID update to eSchol API.")
     send_local_id_updates(row, eschol_api_creds, item_values)
 
-    print("Verifying existing local IDs were preserved...")
+    print("Verifying existing local IDs were preserved.")
     updated_item_values = get_item_values(row, eschol_api_creds)
     verify_update(old_item_values, updated_item_values)
 
-    if not test_mode:
-        print("Updating queue row...")
-        update_queue_row(cursor, row)
+    print("Updating queue row.")
+    update_queue_row(cursor, row)
 
 
 # =======================================
@@ -76,16 +76,16 @@ def verify_update(old_values, new_values):
             for i in range(len(o)):
                 compare_values(o[i], n[i])
         else:
-            print(f"{o}\t\t{n}")
+            if verbose_mode: print(f"{o}\t\t{n}")
             if o != n:
                 raise 'OLD VALUES NOT FOUND IN NEW ESCHOL ITEM. Exiting.'
+
     if reset_mode:
         print("Running in reset mode -- Old and new values:")
         pprint(old_values)
         pprint(new_values)
     else:
         compare_values(old_values, new_values)
-    exit()
 
 
 # =======================================
@@ -94,6 +94,7 @@ def get_next_queue_row(cursor):
     next_queue_row_query = f"select * from {queue_table} where updated=0 limit 1;"
     cursor.execute(next_queue_row_query)
     row = cursor.fetchone()
+    if verbose_mode: pprint(row)
     return row
 
 
@@ -104,11 +105,14 @@ def get_item_values(row, creds):
             item(id:$input_id) {
                 id
                 localIDs {
-                    id scheme subScheme }}}"""
+                    id 
+                    scheme
+                    subScheme}}}"""
 
     local_id_vars = {'input_id': f"ark:/13030/{row['eschol_id']}"}
 
     response = query_eschol_api(creds, local_id_query, local_id_vars)
+    if verbose_mode: pprint(response)
     return response['data']['item']
 
 
@@ -168,10 +172,10 @@ def query_eschol_api(creds, query, vars):
 
     # Print response
     print(f"Response: {response.status_code} {response.reason}")
-    pprint(response.json())
     if response.status_code != 200:
         raise "Non-200 eSchol API response. Exiting"
     else:
+        if verbose_mode: pprint(response.json())
         return response.json()
 
 
