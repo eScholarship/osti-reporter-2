@@ -26,9 +26,19 @@ def main():
 # =======================================
 # Adds new OSTI submissions to the queue
 def enqueue_new_osti_submissions(cursor):
-    with open("osti_id_queue_updates.sql") as f:
-        queue_update_query = f.read()
-    cursor.execute(queue_update_query)
+    enqueue_query = """
+        INSERT INTO eschol_api_queue
+        SELECT
+            id, osti_id, elements_id, eschol_id,
+            0 as `updated`
+        FROM osti_submissions_live
+        WHERE
+            media_response_code between 200 and 299
+            and osti_id not in (
+                select eaq.osti_id
+                from eschol_api_queue eaq);"""
+
+    cursor.execute(enqueue_query)
     print(f"{cursor.rowcount} new rows enqueued for osti_id updates.")
 
 
