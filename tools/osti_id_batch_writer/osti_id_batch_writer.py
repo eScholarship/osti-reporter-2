@@ -173,7 +173,7 @@ def query_eschol_api(creds, query, vars):
     # Print response
     print(f"Response: {response.status_code} {response.reason}")
     if response.status_code != 200:
-        if verbose_mode: pprint(response.json())
+        if verbose_mode: pprint(response.text)
         raise RuntimeError("Non-200 eSchol API response. Exiting")
     else:
         if verbose_mode: pprint(response.json())
