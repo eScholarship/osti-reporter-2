@@ -1,6 +1,7 @@
 import osti_id_batch_writer_program_setup as setup
 import requests
 from pprint import pprint
+import datetime
 from copy import deepcopy
 
 test_mode = True
@@ -15,8 +16,8 @@ def main():
     mysql_conn = setup.get_cdl_connection(creds['cdl_db'])
 
     with mysql_conn.cursor() as cursor:
-        print("Enqueueing new OSTI submissions.")
-        enqueue_new_osti_submissions(cursor)
+        # print("Enqueueing new OSTI submissions.")
+        # enqueue_new_osti_submissions(cursor)
 
         print("Running updates loop.\n")
         run_updates(cursor, creds['eschol_api'])
@@ -46,24 +47,33 @@ def enqueue_new_osti_submissions(cursor):
 # =======================================
 # Main update loop
 def run_updates(cursor, eschol_api_creds):
-    print("Querying update queue for the next row to update.")
+    # loop
+    print("Querying osti submissions for the next row to update.")
     row = get_next_queue_row(cursor)
 
     print("Grabbing item values from eSchol API.")
-    item_values = get_item_values(row, eschol_api_creds)
+    old_item_values = get_item_values(row, eschol_api_creds)
 
-    print("Saving old values for later verification.")
-    old_item_values = deepcopy(item_values)
+    # print("Saving old values for later verification.")
+    # old_item_values = deepcopy(item_values)
 
     print("Sending OSTI ID update to eSchol API.")
-    send_local_id_updates(row, eschol_api_creds, item_values)
+    mutation_response = send_local_id_updates(row, eschol_api_creds)
 
-    print("Verifying existing local IDs were preserved.")
-    updated_item_values = get_item_values(row, eschol_api_creds)
-    verify_update(old_item_values, updated_item_values)
+    if not 199 < mutation_response.status_code < 300:
+        print(f"Failure response from eSchol API: {mutation_response.status_code}")
+        pprint(mutation_response.text)
+        update_submission_row_fail(cursor, row, mutation_response)
+        exit()
 
-    print("Updating queue row.")
-    update_queue_row(cursor, row)
+    else:
+        # time.sleep(30)
+        print("Verifying existing local IDs were preserved.")
+        updated_item_values = get_item_values(row, eschol_api_creds)
+        verify_update(old_item_values, updated_item_values)
+
+        print("Updating osti submission row.")
+        update_submission_row_success(cursor, row, mutation_response)
 
 
 # =======================================
@@ -76,7 +86,8 @@ def verify_update(old_values, new_values):
             for i in range(len(o)):
                 compare_values(o[i], n[i])
         else:
-            if verbose_mode: print(f"{o}\t\t{n}")
+            if verbose_mode:
+                print(f"{o}\t\t{n}")
             if o != n:
                 raise ValueError('OLD VALUES NOT FOUND IN NEW ESCHOL ITEM. Exiting.')
 
@@ -90,11 +101,18 @@ def verify_update(old_values, new_values):
 
 # =======================================
 def get_next_queue_row(cursor):
-    queue_table = 'eschol_api_queue_test' if test_mode else 'eschol_api_queue'
-    next_queue_row_query = f"select * from {queue_table} where updated=0 limit 1;"
+    # queue_table = 'eschol_api_queue_test' if test_mode else 'eschol_api_queue'
+    queue_table = 'osti_submission_test' if test_mode else 'osti_submission_live'
+    # next_queue_row_query = f"select * from {queue_table} where updated=0 order by id limit 1;"
+    next_queue_row_query = f"""
+        select id, eschol_id, osti_id
+        from {queue_table} 
+        where eschol_api_updated is null
+        order by id asc limit 1"""
     cursor.execute(next_queue_row_query)
     row = cursor.fetchone()
-    if verbose_mode: pprint(row)
+    if verbose_mode:
+        pprint(row)
     return row
 
 
@@ -112,43 +130,57 @@ def get_item_values(row, creds):
     local_id_vars = {'input_id': f"ark:/13030/{row['eschol_id']}"}
 
     response = query_eschol_api(creds, local_id_query, local_id_vars)
-    if verbose_mode: pprint(response)
+    if verbose_mode:
+        pprint(response)
+
+    if 199 < response.status_code < 300:
+        pprint(response.text)
+        raise RuntimeError("Non-2xx eSchol API response. Exiting")
+
     return response['data']['item']
 
 
 # =======================================
-def send_local_id_updates(row, creds, item_values):
-
-    # Add the OSTI_ID to the LocalIDs array in item_values
-    item_values['localIDs'].append({
-        'id': f"{row['osti_id']}",
-        'scheme': 'OTHER_ID',
-        'subScheme': 'osti'})
-
-    # This is for testing, it removes any localIDs with "osti" subschemes
-    if reset_mode:
-        reset_local_ids = []
-        for local_id in item_values['localIDs']:
-            if local_id.get('subScheme') is None:
-                reset_local_ids.append(local_id)
-            else:
-                if 'osti' not in local_id.get('subScheme').lower():
-                    reset_local_ids.append(local_id)
-        item_values['localIDs'] = reset_local_ids
+def send_local_id_updates(row, creds):
 
     mutation_query = """
         mutation updateLocalIDs($input: UpdateLocalIDsInput!) { 
             updateLocalIDs(input: $input) { message } 
         }"""
 
-    mutation_vars = {'input': item_values}
-    query_eschol_api(creds, mutation_query, mutation_vars)
+    input_values = {
+        'id': row['eschol_id'],
+        'localIDs': [{
+            'id': f"{row['osti_id']}",
+            'scheme': 'OTHER_ID',
+            'subScheme': 'osti_id'}]}
+
+    mutation_vars = {'input': input_values}
+    response = query_eschol_api(creds, mutation_query, mutation_vars)
+    return response
 
 
 # =======================================
-def update_queue_row(cursor, row):
-    queue_table = 'eschol_api_queue_test' if test_mode else 'eschol_api_queue'
-    update_queue_row_query = f"update {queue_table} set updated=1 where id={row['id']};"
+def update_submission_row_success(cursor, row, response):
+    update_time = datetime.now.strftime('%Y-%m-%d %H:%M:%S')
+    queue_table = 'osti_submissions_test' if test_mode else 'osti_submissions_live'
+    update_queue_row_query = f"""
+        update {queue_table} set
+        updated='{update_time}', eschol_api_response_code={response.status_code}
+        where id={row['id']};"""
+    cursor.execute(update_queue_row_query)
+    print(f"{cursor.rowcount} row updated.")
+
+
+# =======================================
+def update_submission_row_fail(cursor, row, response):
+    queue_table = 'osti_submissions_test' if test_mode else 'osti_submissions_live'
+    update_time = datetime.now.strftime('%Y-%m-%d %H:%M:%S')
+    update_queue_row_query = f"""
+        update {queue_table} set
+        updated='{update_time}', eschol_api_response_code={response.status_code},
+        eschol_api_failure_reason='{response.text}'
+        where id={row['id']};"""
     cursor.execute(update_queue_row_query)
     print(f"{cursor.rowcount} row updated.")
 
@@ -172,12 +204,7 @@ def query_eschol_api(creds, query, vars):
 
     # Print response
     print(f"Response: {response.status_code} {response.reason}")
-    if response.status_code != 200:
-        if verbose_mode: pprint(response.text)
-        raise RuntimeError("Non-200 eSchol API response. Exiting")
-    else:
-        if verbose_mode: pprint(response.json())
-        return response.json()
+    return response
 
 
 # =======================================
