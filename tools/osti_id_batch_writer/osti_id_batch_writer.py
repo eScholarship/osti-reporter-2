@@ -103,12 +103,13 @@ def get_item_values(row, creds):
     response = query_eschol_api(creds, local_id_query, local_id_vars)
     if verbose_mode:
         pprint(response)
+        pprint(response.json())
 
     if not 200 <= response.status_code <= 299:
         pprint(response.text)
         raise RuntimeError("Non-2xx eSchol API response. Exiting")
 
-    return response['data']['item']
+    return response.json()['data']['item']
 
 
 # =======================================
@@ -135,7 +136,8 @@ def send_local_id_updates(row, creds):
 def update_submission_row_success(cursor, osti_table, row, update_time, response):
     update_queue_row_query = f"""
         update {osti_table} set
-        updated='{update_time}', eschol_api_response_code={response.status_code}
+        eschol_api_updated='{update_time}',
+        eschol_api_response_code={response.status_code}
         where id={row['id']};"""
     cursor.execute(update_queue_row_query)
     print(f"{cursor.rowcount} row updated.")
@@ -145,7 +147,8 @@ def update_submission_row_success(cursor, osti_table, row, update_time, response
 def update_submission_row_fail(cursor, osti_table, row, update_time, response):
     update_queue_row_query = f"""
         update {osti_table} set
-        updated='{update_time}', eschol_api_response_code={response.status_code},
+        eschol_api_updated='{update_time}',
+        eschol_api_response_code={response.status_code},
         eschol_api_failure_reason='{response.text}'
         where id={row['id']};"""
     cursor.execute(update_queue_row_query)
