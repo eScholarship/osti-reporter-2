@@ -15,7 +15,7 @@ def main():
     creds = setup.get_creds(test_mode)
     mysql_conn = setup.get_cdl_connection(creds['cdl_db'])
 
-    osti_table = 'osti_submission_test' if test_mode else 'osti_submission_live'
+    osti_table = 'osti_submissions_test' if test_mode else 'osti_submission_live'
     update_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
     with mysql_conn.cursor() as cursor:
@@ -32,7 +32,7 @@ def main():
         print("Sending OSTI ID update to eSchol API.")
         mutation_response = send_local_id_updates(row, creds['eschol_api'])
 
-        if not 199 < mutation_response.status_code < 300:
+        if not 200 <= mutation_response.status_code <= 299:
             print(f"Failure response from eSchol API: {mutation_response.status_code}")
             pprint(mutation_response.text)
             update_submission_row_fail(cursor, osti_table, row, update_time, mutation_response)
@@ -104,7 +104,7 @@ def get_item_values(row, creds):
     if verbose_mode:
         pprint(response)
 
-    if 199 < response.status_code < 300:
+    if not 200 <= response.status_code <= 299:
         pprint(response.text)
         raise RuntimeError("Non-2xx eSchol API response. Exiting")
 
