@@ -10,6 +10,8 @@ test_mode = True
 verbose_mode = True
 reset_mode = False
 error_reset = 3
+error_count = error_reset
+total_updates = 5
 
 
 # =======================================
@@ -17,52 +19,58 @@ error_reset = 3
 def main():
     creds = get_creds()
     mysql_conn = get_cdl_connection(creds['cdl_db'])
-    error_counter = error_reset
+    osti_table = creds['cdl_db']['osti-table-test'] \
+        if test_mode else creds['cdl_db']['osti-table']
 
-    osti_table = 'osti_submissions_test' if test_mode else 'osti_submission_live'
-    update_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-
+    print("Running updates loop.\n")
     with mysql_conn.cursor() as cursor:
-
-        print("Running updates loop.\n")
-        #for i in range(800):
-
-        print("Querying osti submissions for the next row to update.")
-        row = get_next_queue_row(cursor, osti_table)
-        sleep(10)
-
-        print("Grabbing item values from eSchol API.")
-        old_item_values = get_item_values(row, creds['eschol_api'])
-        sleep(10)
-
-        print("Sending OSTI ID update to eSchol API.")
-        mutation_response = send_local_id_updates(row, creds['eschol_api'])
-        sleep(10)
-
-        if not 200 <= mutation_response.status_code <= 299:
-            print(f"Failure response from eSchol API: {mutation_response.status_code}")
-            pprint(mutation_response.text)
-            update_submission_row_fail(cursor, osti_table, row, update_time, mutation_response)
-
-            # If several errors occur in a row, bail.
-            error_counter = error_counter - 1
-            if error_counter == 0:
-                raise RuntimeError("SEQUENTIAL ERROR LIMIT REACHED. BAILING")
-
-        else:
-            print("Verifying existing local IDs were preserved.")
-            updated_item_values = get_item_values(row, creds['eschol_api'])
-            verify_update(old_item_values, updated_item_values)
-
-            print("Updating osti submission row.")
-            update_submission_row_success(cursor, osti_table, row, update_time, mutation_response)
-
-            # Reset the error counter after successful updates
-            error_counter = error_reset
-
-        sleep(10)
+        for i in range(total_updates):
+            run_single_update(creds, cursor, osti_table)
 
     mysql_conn.close()
+
+
+# =======================================
+# Update a single eSchol item with OSTI ID
+def run_single_update(creds, cursor, osti_table):
+    update_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    global error_count
+
+    print("Querying osti submissions for the next row to update.")
+    row = get_next_queue_row(cursor, osti_table)
+    sleep(10)
+
+    print("Grabbing item values from eSchol API.")
+    old_item_values = get_item_values(row, creds['eschol_api'])
+    sleep(10)
+
+    print("Sending OSTI ID update to eSchol API.")
+    mutation_response = send_local_id_updates(row, creds['eschol_api'])
+    sleep(10)
+
+    if not 200 <= mutation_response.status_code <= 299:
+        print(f"Failure response from eSchol API: {mutation_response.status_code}")
+        if verbose_mode:
+            pprint(mutation_response.text)
+        update_submission_row_fail(cursor, osti_table, row, update_time, mutation_response)
+
+        # If several errors occur in a row, exit.
+        error_count = error_count - 1
+        if error_count == 0:
+            raise RuntimeError("SEQUENTIAL ERROR LIMIT REACHED. EXITING")
+
+    else:
+        print("Verifying existing local IDs were preserved.")
+        updated_item_values = get_item_values(row, creds['eschol_api'])
+        verify_update(old_item_values, updated_item_values)
+
+        print("Updating osti submission row.")
+        update_submission_row_success(cursor, osti_table, row, update_time, mutation_response)
+
+        # Reset the error count after successful updates
+        error_count = error_reset
+
+    sleep(10)
 
 
 # =======================================
@@ -99,7 +107,7 @@ def get_item_values(row, creds):
 
     if not 200 <= response.status_code <= 299:
         pprint(response.text)
-        raise RuntimeError("Non-2xx eSchol API response. Exiting")
+        raise RuntimeError("Non-2xx eSchol API mutation response. Exiting")
 
     return response.json()['data']['item']
 
@@ -195,6 +203,7 @@ def query_eschol_api(creds, query, vars):
 # =======================================
 # Setup function, connects to AWS for creds
 def get_creds():
+    print("Connecting to AWS.")
     session = boto3.Session()
 
     def get_ssm_parameters(folder, names):
@@ -208,22 +217,23 @@ def get_creds():
 
         return param_values
 
-    selected_creds = {}
+    creds = dict()
 
-    selected_creds['cdl_db'] = get_ssm_parameters(
+    creds['cdl_db'] = get_ssm_parameters(
         f"/pub-oapi-tools/tools-rds/prod",
-        ['user', 'password', 'server', 'port', 'osti-db', 'driver', 'osti-table'])
+        ['user', 'password', 'server', 'port', 'osti-db', 'driver',
+         'osti-table', 'osti-table-test'])
 
     if test_mode:
-        selected_creds['eschol_api'] = get_ssm_parameters(
+        creds['eschol_api'] = get_ssm_parameters(
             f"/pub-oapi-tools/eschol-api/qa",
             ['endpoint', 'priv-key', 'cookie'])
     else:
-        selected_creds['eschol_api'] = get_ssm_parameters(
+        creds['eschol_api'] = get_ssm_parameters(
             f"/pub-oapi-tools/eschol-api/prod",
             ['endpoint', 'priv-key', 'cookie'])
 
-    return selected_creds
+    return creds
 
 
 # =======================================
