@@ -1,16 +1,15 @@
 # OSTI ID BATCH WRITER
 
 ## Purpose
-After publications have been submitted to OSTI, their OSTI IDs are saved to the tools database.
-This program adds newly-submitted publications to a queuing table, and then adds these pubs'
-OSTI IDs to the eScholarship database via the API.
+After publications have been submitted to OSTI, their OSTI IDs are saved to the pub-oapi-tools-rds DB.
+This program reads from that table, updating the eSchol item's local_IDs with the OSTI ID, via the eSchol API.
+
+This is a batch-processing program, but this code will eventually be integrated into the OSTI reporter as
+the final step after the publication submissions to OSTI's E-Link API.
 
 ## Program flow
-
-### Enqueue publications
-- Sends an SQL query which finds pubs that haven't had their OSTI IDs added to eSchol yet and adds them
-
-### Update pubs loop
+- Grabs the appropriate connections based on the 'testing_mode' flag
+- Loops the following:
 - Reads a single row from the queue table in the tools DB
 - Sends an access query to the eSchol API to get the pubs' localIDs array
    - Saves this original array for later verification 
