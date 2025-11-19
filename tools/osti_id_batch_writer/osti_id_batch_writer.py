@@ -1,19 +1,23 @@
-import osti_id_batch_writer_program_setup as setup
+import boto3
+import pymysql
 import requests
 from pprint import pprint
 from datetime import datetime
-from copy import deepcopy
+from time import sleep
 
+# Global vars
 test_mode = True
 verbose_mode = True
 reset_mode = False
+error_reset = 3
 
 
 # =======================================
 # Main
 def main():
-    creds = setup.get_creds(test_mode)
-    mysql_conn = setup.get_cdl_connection(creds['cdl_db'])
+    creds = get_creds()
+    mysql_conn = get_cdl_connection(creds['cdl_db'])
+    error_counter = error_reset
 
     osti_table = 'osti_submissions_test' if test_mode else 'osti_submission_live'
     update_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
@@ -21,25 +25,31 @@ def main():
     with mysql_conn.cursor() as cursor:
 
         print("Running updates loop.\n")
-        # loop
+        #for i in range(800):
 
         print("Querying osti submissions for the next row to update.")
         row = get_next_queue_row(cursor, osti_table)
+        sleep(10)
 
         print("Grabbing item values from eSchol API.")
         old_item_values = get_item_values(row, creds['eschol_api'])
+        sleep(10)
 
         print("Sending OSTI ID update to eSchol API.")
         mutation_response = send_local_id_updates(row, creds['eschol_api'])
+        sleep(10)
 
         if not 200 <= mutation_response.status_code <= 299:
             print(f"Failure response from eSchol API: {mutation_response.status_code}")
             pprint(mutation_response.text)
             update_submission_row_fail(cursor, osti_table, row, update_time, mutation_response)
-            exit()
+
+            # If several errors occur in a row, bail.
+            error_counter = error_counter - 1
+            if error_counter == 0:
+                raise RuntimeError("SEQUENTIAL ERROR LIMIT REACHED. BAILING")
 
         else:
-            # time.sleep(30)
             print("Verifying existing local IDs were preserved.")
             updated_item_values = get_item_values(row, creds['eschol_api'])
             verify_update(old_item_values, updated_item_values)
@@ -47,30 +57,12 @@ def main():
             print("Updating osti submission row.")
             update_submission_row_success(cursor, osti_table, row, update_time, mutation_response)
 
+            # Reset the error counter after successful updates
+            error_counter = error_reset
+
+        sleep(10)
+
     mysql_conn.close()
-
-
-# =======================================
-def verify_update(old_values, new_values):
-    def compare_values(o, n):
-        if type(o) is dict:
-            for key in o.keys():
-                compare_values(o.get(key), n.get(key))
-        elif type(o) is list:
-            for i in range(len(o)):
-                compare_values(o[i], n[i])
-        else:
-            if verbose_mode:
-                print(f"{o}\t\t{n}")
-            if o != n:
-                raise ValueError('OLD VALUES NOT FOUND IN NEW ESCHOL ITEM. Exiting.')
-
-    if reset_mode:
-        print("Running in reset mode -- Old and new values:")
-        pprint(old_values)
-        pprint(new_values)
-    else:
-        compare_values(old_values, new_values)
 
 
 # =======================================
@@ -133,6 +125,29 @@ def send_local_id_updates(row, creds):
 
 
 # =======================================
+def verify_update(old_values, new_values):
+    def compare_values(o, n):
+        if type(o) is dict:
+            for key in o.keys():
+                compare_values(o.get(key), n.get(key))
+        elif type(o) is list:
+            for i in range(len(o)):
+                compare_values(o[i], n[i])
+        else:
+            if verbose_mode:
+                print(f"{o}\t\t{n}")
+            if o != n:
+                raise ValueError('OLD VALUES NOT FOUND IN NEW ESCHOL ITEM. Exiting.')
+
+    if reset_mode:
+        print("Running in reset mode -- Old and new values:")
+        pprint(old_values)
+        pprint(new_values)
+    else:
+        compare_values(old_values, new_values)
+
+
+# =======================================
 def update_submission_row_success(cursor, osti_table, row, update_time, response):
     update_queue_row_query = f"""
         update {osti_table} set
@@ -175,6 +190,58 @@ def query_eschol_api(creds, query, vars):
     # Print response
     print(f"Response: {response.status_code} {response.reason}")
     return response
+
+
+# =======================================
+# Setup function, connects to AWS for creds
+def get_creds():
+    session = boto3.Session()
+
+    def get_ssm_parameters(folder, names):
+        ssm_client = session.client(service_name='ssm', region_name='us-west-2')
+        param_names = [f"{folder}/{name}" for name in names]
+        response = ssm_client.get_parameters(Names=param_names, WithDecryption=True)
+
+        param_values = {
+            (param['Name'].split('/')[-1]): param['Value']
+            for param in response['Parameters']}
+
+        return param_values
+
+    selected_creds = {}
+
+    selected_creds['cdl_db'] = get_ssm_parameters(
+        f"/pub-oapi-tools/tools-rds/prod",
+        ['user', 'password', 'server', 'port', 'osti-db', 'driver', 'osti-table'])
+
+    if test_mode:
+        selected_creds['eschol_api'] = get_ssm_parameters(
+            f"/pub-oapi-tools/eschol-api/qa",
+            ['endpoint', 'priv-key', 'cookie'])
+    else:
+        selected_creds['eschol_api'] = get_ssm_parameters(
+            f"/pub-oapi-tools/eschol-api/prod",
+            ['endpoint', 'priv-key', 'cookie'])
+
+    return selected_creds
+
+
+# =======================================
+# connect to the mySql db
+def get_cdl_connection(mysql_creds):
+    try:
+        mysql_conn = pymysql.connect(
+            host=mysql_creds['server'],
+            user=mysql_creds['user'],
+            password=mysql_creds['password'],
+            database=mysql_creds['osti-db'],
+            cursorclass=pymysql.cursors.DictCursor,
+            autocommit=True)
+
+        return mysql_conn
+    except Exception as e:
+        print("ERROR WHILE CONNECTING TO MYSQL DATABASE.")
+        raise e
 
 
 # =======================================
