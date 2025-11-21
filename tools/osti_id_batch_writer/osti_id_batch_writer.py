@@ -9,9 +9,10 @@ from time import sleep
 test_mode = True
 verbose_mode = True
 reset_mode = False
+verify_updates = False
 error_reset = 3
 error_count = error_reset
-total_updates = 5
+total_updates = 100
 
 
 # =======================================
@@ -24,29 +25,28 @@ def main():
 
     print("Running updates loop.\n")
     with mysql_conn.cursor() as cursor:
-        for i in range(total_updates):
-            run_single_update(creds, cursor, osti_table)
+        print("Querying osti submissions for the next row to update.")
+        rows = get_update_batch_rows(cursor, osti_table, total_updates)
+
+        for row in rows:
+            run_single_update(creds, cursor, osti_table, row)
 
     mysql_conn.close()
 
 
 # =======================================
 # Update a single eSchol item with OSTI ID
-def run_single_update(creds, cursor, osti_table):
+def run_single_update(creds, cursor, osti_table, row):
     update_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     global error_count
 
-    print("Querying osti submissions for the next row to update.")
-    row = get_next_queue_row(cursor, osti_table)
-    sleep(10)
-
     print("Grabbing item values from eSchol API.")
     old_item_values = get_item_values(row, creds['eschol_api'])
-    sleep(10)
+    sleep(15)
 
     print("Sending OSTI ID update to eSchol API.")
     mutation_response = send_local_id_updates(row, creds['eschol_api'])
-    sleep(10)
+    sleep(15)
 
     if not 200 <= mutation_response.status_code <= 299:
         print(f"Failure response from eSchol API: {mutation_response.status_code}")
@@ -60,9 +60,10 @@ def run_single_update(creds, cursor, osti_table):
             raise RuntimeError("SEQUENTIAL ERROR LIMIT REACHED. EXITING")
 
     else:
-        print("Verifying existing local IDs were preserved.")
-        updated_item_values = get_item_values(row, creds['eschol_api'])
-        verify_update(old_item_values, updated_item_values)
+        if verify_updates:
+            print("Verifying existing local IDs were preserved.")
+            updated_item_values = get_item_values(row, creds['eschol_api'])
+            verify_update(old_item_values, updated_item_values)
 
         print("Updating osti submission row.")
         update_submission_row_success(cursor, osti_table, row, update_time, mutation_response)
@@ -70,21 +71,21 @@ def run_single_update(creds, cursor, osti_table):
         # Reset the error count after successful updates
         error_count = error_reset
 
-    sleep(10)
+    sleep(15)
 
 
 # =======================================
-def get_next_queue_row(cursor, osti_table):
+def get_update_batch_rows(cursor, osti_table, total_updates):
     next_queue_row_query = f"""
         select id, eschol_id, osti_id
         from {osti_table} 
         where eschol_api_updated is null
-        order by id asc limit 1"""
+        order by id asc limit {total_updates}"""
     cursor.execute(next_queue_row_query)
-    row = cursor.fetchone()
+    rows = cursor.fetchall()
     if verbose_mode:
-        pprint(row)
-    return row
+        pprint(rows)
+    return rows
 
 
 # =======================================

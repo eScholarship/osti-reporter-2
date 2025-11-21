@@ -11,3 +11,4 @@ logs/*
 media_test
 .env
 v1-backups
+lambda_layer/
