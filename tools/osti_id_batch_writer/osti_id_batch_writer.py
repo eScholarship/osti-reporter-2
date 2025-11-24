@@ -6,13 +6,14 @@ from datetime import datetime
 from time import sleep
 
 # Global vars
-test_mode = True
+test_mode = False
 verbose_mode = True
 reset_mode = False
 verify_updates = False
 error_reset = 3
 error_count = error_reset
-total_updates = 100
+total_updates = 300
+sleep_time = 5
 
 
 # =======================================
@@ -42,11 +43,11 @@ def run_single_update(creds, cursor, osti_table, row):
 
     print("Grabbing item values from eSchol API.")
     old_item_values = get_item_values(row, creds['eschol_api'])
-    sleep(15)
+    sleep(sleep_time)
 
     print("Sending OSTI ID update to eSchol API.")
     mutation_response = send_local_id_updates(row, creds['eschol_api'])
-    sleep(15)
+    sleep(sleep_time)
 
     if not 200 <= mutation_response.status_code <= 299:
         print(f"Failure response from eSchol API: {mutation_response.status_code}")
@@ -71,7 +72,7 @@ def run_single_update(creds, cursor, osti_table, row):
         # Reset the error count after successful updates
         error_count = error_reset
 
-    sleep(15)
+    sleep(sleep_time)
 
 
 # =======================================
