@@ -76,11 +76,19 @@ def run_single_update(creds, cursor, osti_table, row):
 
 # =======================================
 def get_update_batch_rows(cursor, osti_table, total_updates):
+    # next_queue_row_query = f"""
+    #     select id, eschol_id, osti_id
+    #     from {osti_table}
+    #     where eschol_api_updated is null
+    #     order by id asc limit {total_updates}"""
     next_queue_row_query = f"""
-        select id, eschol_id, osti_id
-        from {osti_table} 
-        where eschol_api_updated is null
+        select o.id, o.eschol_id, o.osti_id
+        from {osti_table} o
+            left join items i
+                on i.id = o.eschol_id
+        where i.id is null
         order by id asc limit {total_updates}"""
+
     cursor.execute(next_queue_row_query)
     rows = cursor.fetchall()
     if verbose_mode:
