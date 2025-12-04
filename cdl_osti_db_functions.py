@@ -52,15 +52,28 @@ def insert_new_metadata_submission(pub, mysql_creds):
         pub = convert_nulls_for_sql(pub)
 
         # Build the query
-        insert_query = (f"""INSERT INTO {mysql_creds['osti-table']} 
-            (date_stamp, eschol_ark, osti_id,
-            doi, lbnl_report_no, elements_id,
-            eschol_id, eschol_pr_modified_when) VALUES \n""")
+        insert_query = (f"""INSERT INTO {mysql_creds['osti-table']} (
+            date_stamp,
+            eschol_ark,
+            osti_id,
+            doi,
+            lbnl_report_no,
+            elements_id,
+            eschol_id,
+            eschol_pr_modified_when,
+            pub_date) VALUES \n""")
 
         # Add the values from the pub
-        insert_query += (f"""(CURDATE(), '{pub['ark']}', {pub['osti_id']},
-            '{pub['doi']}', '{pub['LBL Report Number']}', {pub['id']},
-            '{pub['eSchol ID']}', '{pub['eschol_pr_modified_when'].strftime('%Y-%m-%d %H:%M:%S.%f')}');"""
+        insert_query += (f"""(
+            CURDATE(),
+            '{pub['ark']}',
+            {pub['osti_id']},
+            '{pub['doi']}',
+            '{pub['LBL Report Number']}',
+            {pub['id']},
+            '{pub['eSchol ID']}',
+            '{pub['eschol_pr_modified_when'].strftime('%Y-%m-%d %H:%M:%S.%f')}',
+            '{pub['Reporting Date 1']}');"""
             ).replace("'Null'", 'Null')
 
         # Open cursor and send query
