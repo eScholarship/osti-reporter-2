@@ -27,6 +27,7 @@ SELECT DISTINCT
 	FORMAT(p.[Reporting Date 1], 'MM/dd/yyyy') AS [Reporting Date 1],
 	FORMAT(pr.[publication-date], 'MM/dd/yyyy') AS [eschol Pub Date],
 	FORMAT(pr.[online-publication-date], 'MM/dd/yyyy') AS [eschol Online Pub Date],
+	pr.[publication-date] AS [pub_date_for_db]
 	pr.[ID] AS [Pub Record ID],
 	pr.[abstract],
  	pr.[Data Source Proprietary ID] AS [eSchol ID],

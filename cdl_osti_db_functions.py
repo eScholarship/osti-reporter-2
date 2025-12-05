@@ -73,8 +73,8 @@ def insert_new_metadata_submission(pub, mysql_creds):
             {pub['id']},
             '{pub['eSchol ID']}',
             '{pub['eschol_pr_modified_when'].strftime('%Y-%m-%d %H:%M:%S.%f')}',
-            '{pub['Reporting Date 1']}');"""
-            ).replace("'Null'", 'Null')
+            '{pub['pub_date_for_db'].strftime('%Y-%m-%d')};"""
+                         ).replace("'Null'", 'Null')
 
         # Open cursor and send query
         cursor.execute(insert_query)

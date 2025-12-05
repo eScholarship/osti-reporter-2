@@ -6,14 +6,14 @@ from datetime import datetime
 from time import sleep
 
 # Global vars
-test_mode = False
-verbose_mode = False
+test_mode = True
+verbose_mode = True
 reset_mode = False
 verify_updates = False
 error_reset = 3
 error_count = error_reset
-total_updates = 750
-sleep_time = 5
+total_updates = 1
+sleep_time = 0
 
 
 # =======================================
@@ -77,16 +77,26 @@ def run_single_update(creds, cursor, osti_table, row):
 # =======================================
 def get_update_batch_rows(cursor, osti_table, total_updates):
     # next_queue_row_query = f"""
-    #     select id, eschol_id, osti_id
+    #     select id, eschol_id, osti_id, pub_date
     #     from {osti_table}
-    #     where eschol_api_updated is null
+    #     where
+    #         eschol_api_updated is null
     #     order by id asc limit {total_updates}"""
+
+    # next_queue_row_query = f"""
+    #     select o.id, o.eschol_id, o.osti_id, i.published
+    #     from {osti_table} o
+    #         left join items i
+    #             on i.id = o.eschol_id
+    #     where i.id is null
+    #     order by id asc limit {total_updates}"""
+
     next_queue_row_query = f"""
-        select o.id, o.eschol_id, o.osti_id
-        from {osti_table} o
-            left join items i
-                on i.id = o.eschol_id
-        where i.id is null
+        select id, eschol_id, osti_id, pub_date
+        from {osti_table}
+        where
+            pub_date is not null
+            and pub_date_fixed is null
         order by id asc limit {total_updates}"""
 
     cursor.execute(next_queue_row_query)
@@ -102,6 +112,7 @@ def get_item_values(row, creds):
         query getLocalIds($input_id: ID!) {
             item(id:$input_id) {
                 id
+                published
                 localIDs {
                     id 
                     scheme
@@ -131,6 +142,7 @@ def send_local_id_updates(row, creds):
 
     input_values = {
         'id': row['eschol_id'],
+        'published': row['pub_date'].strftime('%Y-%m-%d'),
         'localIDs': [{
             'id': f"{row['osti_id']}",
             'scheme': 'OTHER_ID',
@@ -169,7 +181,8 @@ def update_submission_row_success(cursor, osti_table, row, update_time, response
     update_queue_row_query = f"""
         update {osti_table} set
         eschol_api_updated='{update_time}',
-        eschol_api_response_code={response.status_code}
+        eschol_api_response_code={response.status_code},
+        pub_date_fixed='{update_time}'
         where id={row['id']};"""
     cursor.execute(update_queue_row_query)
     print(f"{cursor.rowcount} row updated.")
