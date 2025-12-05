@@ -6,14 +6,14 @@ from datetime import datetime
 from time import sleep
 
 # Global vars
-test_mode = True
-verbose_mode = True
+test_mode = False
+verbose_mode = False
 reset_mode = False
 verify_updates = False
 error_reset = 3
 error_count = error_reset
-total_updates = 1
-sleep_time = 0
+total_updates = 400
+sleep_time = 18
 
 
 # =======================================
@@ -91,9 +91,19 @@ def get_update_batch_rows(cursor, osti_table, total_updates):
     #     where i.id is null
     #     order by id asc limit {total_updates}"""
 
+    # next_queue_row_query = f"""
+    #     select id, eschol_id, osti_id, pub_date
+    #     from {osti_table}
+    #     where
+    #         pub_date is not null
+    #         and pub_date_fixed is null
+    #     order by id asc limit {total_updates}"""
+
     next_queue_row_query = f"""
-        select id, eschol_id, osti_id, pub_date
-        from {osti_table}
+        select o.id, o.eschol_id, o.osti_id, o.pub_date
+        from {osti_table} o
+            join items i
+                on o.eschol_id = i.id
         where
             pub_date is not null
             and pub_date_fixed is null
