@@ -122,4 +122,9 @@ def assign_creds(args):
         f"/pub-oapi-tools/elink-api/{elink_cnx}",
         ['endpoint', 'token', 'pdf-user-agent'])
 
+    # eSchol API
+    selected_creds['eschol_api'] = get_ssm_parameters(
+        f"/pub-oapi-tools/eschol-api/{output_cnx}",
+        ['endpoint', 'priv-key', 'cookie'])
+
     return selected_creds
