@@ -1,25 +1,27 @@
-import pyodbc
+from pub_oapi_tools_common import ucpms_db
 
 
 def get_elements_connection(sql_creds):
-    print(pyodbc.drivers())
+
     # Connect to db
-    try:
-        conn = pyodbc.connect(
-            driver=sql_creds['driver'],
-            server=(sql_creds['server'] + ',' + sql_creds['port']),
-            database=sql_creds['database'],
-            uid=sql_creds['user'],
-            pwd=sql_creds['password'],
-            trustservercertificate='yes')
+    conn = ucpms_db.get_connection(sql_creds)
 
-    except Exception as e:
-        print("ERROR CONNECTING TO ELEMENTS DATABASE. "
-              "Check credits and/or SSH tunneling.")
-        raise e
-
-    print("Connected to Elements reporting DB.")
-    conn.autocommit = True  # Required when queries use TRANSACTION
+    # try:
+    #     conn = pyodbc.connect(
+    #         driver=sql_creds['driver'],
+    #         server=(sql_creds['server'] + ',' + sql_creds['port']),
+    #         database=sql_creds['database'],
+    #         uid=sql_creds['user'],
+    #         pwd=sql_creds['password'],
+    #         trustservercertificate='yes')
+    #
+    # except Exception as e:
+    #     print("ERROR CONNECTING TO ELEMENTS DATABASE. "
+    #           "Check credits and/or SSH tunneling.")
+    #     raise e
+    #
+    # print("Connected to Elements reporting DB.")
+    # conn.autocommit = True  # Required when queries use TRANSACTION
 
     return conn
 
