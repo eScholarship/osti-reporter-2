@@ -18,6 +18,9 @@ def get_cdl_connection(mysql_creds):
     # except Exception as e:
     #     print("ERROR WHILE CONNECTING TO MYSQL DATABASE.")
     #     raise e
+
+    # TK TK this is sloppy, fix it
+    mysql_creds['database'] = mysql_creds['osti-db']
     mysql_conn = pub_oapi_tools_db.get_connection(mysql_creds)
     return mysql_conn
 
