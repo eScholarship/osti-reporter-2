@@ -1,5 +1,4 @@
-# pyMySQL - https://pymysql.readthedocs.io/en/latest/
-import pymysql
+from pub_oapi_tools_common import pub_oapi_tools_db
 from time import sleep
 
 
@@ -7,18 +6,20 @@ from time import sleep
 #       connection should be called before each individual mysql_operation.
 def get_cdl_connection(mysql_creds):
     # connect to the mySql db
-    try:
-        mysql_conn = pymysql.connect(
-            host=mysql_creds['server'],
-            user=mysql_creds['user'],
-            password=mysql_creds['password'],
-            database=mysql_creds['osti-db'],
-            cursorclass=pymysql.cursors.DictCursor)
-
-        return mysql_conn
-    except Exception as e:
-        print("ERROR WHILE CONNECTING TO MYSQL DATABASE.")
-        raise e
+    # try:
+    #     mysql_conn = pymysql.connect(
+    #         host=mysql_creds['server'],
+    #         user=mysql_creds['user'],
+    #         password=mysql_creds['password'],
+    #         database=mysql_creds['osti-db'],
+    #         cursorclass=pymysql.cursors.DictCursor)
+    #
+    #     return mysql_conn
+    # except Exception as e:
+    #     print("ERROR WHILE CONNECTING TO MYSQL DATABASE.")
+    #     raise e
+    mysql_conn = pub_oapi_tools_db.get_connection(mysql_creds)
+    return mysql_conn
 
 
 # Retrieves the entire eSchol OSTI db
