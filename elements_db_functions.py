@@ -14,7 +14,8 @@ def get_elements_connection(sql_creds):
             trustservercertificate='yes')
 
     except Exception as e:
-        print("ERROR CONNECTING TO ELEMENTS DATABASE. Check credits and/or SSH tunneling.")
+        print("ERROR CONNECTING TO ELEMENTS DATABASE. "
+              "Check credits and/or SSH tunneling.")
         raise e
 
     print("Connected to Elements reporting DB.")
