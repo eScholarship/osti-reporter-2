@@ -2,6 +2,7 @@ import pyodbc
 
 
 def get_elements_connection(sql_creds):
+    print(pyodbc.drivers())
     # Connect to db
     try:
         conn = pyodbc.connect(

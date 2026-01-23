@@ -6,6 +6,11 @@ from time import sleep
 def update_eschol_api(rows, eschol_api_creds, cdl_db_creds):
 
     for row in rows:
+        # Skip unsuccessful E-Link API submissions
+        if row.get('response_success') is not True:
+            print("(Skipping a failed OSTI submission)")
+            continue
+
         response = send_local_id_updates(row, eschol_api_creds)
         row['eschol_api_response_code'] = response.status_code
         if not 200 <= response.status_code <= 299:
