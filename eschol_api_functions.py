@@ -6,6 +6,13 @@ from time import sleep
 def update_eschol_api(rows, eschol_api_creds, cdl_db_creds):
 
     for row in rows:
+
+        # Skip unsucsefull E-Link API submissions
+        if row.get('response_success') is not True:
+            print("(Skipping a failed OSTI submission)")
+            continue
+
+
         response = send_local_id_updates(row, eschol_api_creds)
         row['eschol_api_response_code'] = response.status_code
         if not 200 <= response.status_code <= 299:
@@ -27,8 +34,10 @@ def send_local_id_updates(row, creds):
         }"""
 
     input_values = {
-        'id': row['eschol_id'],
-        'published': row['pub_date'].strftime('%Y-%m-%d'),
+        # 'id': row['eschol_id'],
+        'id': row['eSchol ID'],
+        # 'published': row['pub_date'].strftime('%Y-%m-%d'),
+        'published': row['pub_date_for_db'].strftime('%Y-%m-%d'),
         'localIDs': [{
             'id': f"{row['osti_id']}",
             'scheme': 'OTHER_ID',
@@ -45,8 +54,12 @@ def query_eschol_api(creds, query, mutation_vars):
     import requests
 
     # Set headers cookies
-    headers = dict(PRIVILEGED=creds['priv-key'])
-    cookies = dict(ACCESS_COOKIE=creds['cookie'])
+    headers = {"PRIVILEGED": creds['priv-key'],
+               "user-agent": 'cdl'}
+    if creds.get('cookie'):
+        cookies = dict(ACCESS_COOKIE=creds['cookie'])
+    else:
+        cookies = {}
 
     # Package the query and vars
     json = {"query": query, "variables": mutation_vars}

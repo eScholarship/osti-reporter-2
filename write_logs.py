@@ -1,13 +1,15 @@
 import csv
 import json
 import os
-from datetime import datetime
+from datetime import datetime, date
 
 
 # Helper function for outputting datetime in JSON
 def serialize_datetime(obj):
     if isinstance(obj, datetime):
         return obj.isoformat()
+    elif isinstance(obj, date):
+        return obj.strftime('%Y-%m-%d')
     raise TypeError("Type not serializable")
 
 

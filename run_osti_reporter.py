@@ -9,7 +9,7 @@ import eschol_api_functions as eschol_api
 
 
 # Global vars
-submission_limit = 200
+submission_limit = 200  
 sleep_time = 3
 
 
@@ -81,7 +81,7 @@ def process_new_osti_pubs(args, creds, elements_conn, log_folder):
     print(f"\n{len(new_osti_pubs)} new pubs for submission.")
     if len(new_osti_pubs) > submission_limit:
         print(f"Truncating new pub list to submission limit ({submission_limit})")
-        new_osti_pubs = new_osti_pubs[submission_limit:]
+        new_osti_pubs = new_osti_pubs[:submission_limit]
 
     # Log Elements query results
     if args.full_logging:

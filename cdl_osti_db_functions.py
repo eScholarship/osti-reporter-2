@@ -73,8 +73,10 @@ def insert_new_metadata_submission(pub, mysql_creds):
             {pub['id']},
             '{pub['eSchol ID']}',
             '{pub['eschol_pr_modified_when'].strftime('%Y-%m-%d %H:%M:%S.%f')}',
-            '{pub['pub_date_for_db'].strftime('%Y-%m-%d')};"""
+            '{pub['pub_date_for_db'].strftime('%Y-%m-%d')}');"""
                          ).replace("'Null'", 'Null')
+
+        print(insert_query)
 
         # Open cursor and send query
         cursor.execute(insert_query)
@@ -202,7 +204,7 @@ def update_with_eschol_api(row, mysql_creds):
         # Success update
         if row['eschol_api_success']:
             update_queue_row_query = f"""
-                update {mysql_creds['osti_table']} set
+                update {mysql_creds['osti-table']} set
                 eschol_api_updated='{update_time}',
                 eschol_api_response_code={row['eschol_api_response_code']},
                 pub_date_fixed='{update_time}'
@@ -211,7 +213,7 @@ def update_with_eschol_api(row, mysql_creds):
         # Failure update
         else:
             update_queue_row_query = f"""
-                update {mysql_creds['osti_table']} set
+                update {mysql_creds['osti-table']} set
                 eschol_api_updated='{update_time}',
                 eschol_api_response_code={row['eschol_api_response_code']},
                 where osti_id={row['osti_id']};"""
