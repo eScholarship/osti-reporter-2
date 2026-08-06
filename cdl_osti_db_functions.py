@@ -5,20 +5,6 @@ from time import sleep
 # Note: mysql_creds are set individually for read and write, So this
 #       connection should be called before each individual mysql_operation.
 def get_cdl_connection(mysql_creds):
-    # connect to the mySql db
-    # try:
-    #     mysql_conn = pymysql.connect(
-    #         host=mysql_creds['server'],
-    #         user=mysql_creds['user'],
-    #         password=mysql_creds['password'],
-    #         database=mysql_creds['osti-db'],
-    #         cursorclass=pymysql.cursors.DictCursor)
-    #
-    #     return mysql_conn
-    # except Exception as e:
-    #     print("ERROR WHILE CONNECTING TO MYSQL DATABASE.")
-    #     raise e
-
     # TK TK this is sloppy, fix it
     mysql_creds['database'] = mysql_creds['osti-db']
     mysql_conn = pub_oapi_tools_db.get_connection(mysql_creds)

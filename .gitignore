@@ -12,3 +12,10 @@ media_test
 .env
 v1-backups
 lambda_layer/
+
+# only allow specific tools
+tools/*
+!tools/batch_osti_upload_generic
+tools/batch_osti_upload_generic/input/*
+tools/batch_osti_upload_generic/output/*
+tools/batch_osti_upload_generic/batch_release_info.py

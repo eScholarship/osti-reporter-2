@@ -50,7 +50,7 @@ def query_eschol_api(creds, query, mutation_vars):
     import requests
 
     # Set headers cookies
-    headers = dict(PRIVILEGED=creds['priv-key'])
+    headers = {"PRIVILEGED": creds['priv-key'], 'user-agent': 'cdl'}
     cookies = dict(ACCESS_COOKIE=creds['cookie'])
 
     # Package the query and vars

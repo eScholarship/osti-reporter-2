@@ -4,10 +4,13 @@ import mimetypes
 from time import sleep
 from requests_toolbelt.multipart.encoder import MultipartEncoder
 import cdl_osti_db_functions as cdl
+from pub_oapi_tools_common import osti_elink_api
 
 
 # New Metadata submissions
 def submit_new_pubs(pubs_for_metadata_submission, osti_creds, mysql_creds):
+    elink_api = osti_elink_api.ElinkApi(creds=osti_creds)
+
     submission_counter = 0
     for pub in pubs_for_metadata_submission:
         submission_counter += 1
@@ -15,7 +18,8 @@ def submit_new_pubs(pubs_for_metadata_submission, osti_creds, mysql_creds):
         print(f"Submitting Publication ID: {pub['id']}")
 
         try:
-            response = post_metadata(osti_creds, pub)
+            # response = post_metadata(osti_creds, pub)
+            response = elink_api.post_metadata(pub=pub)
             pub = update_pub_with_response(pub, response)
 
             if pub['response_success']:
@@ -135,23 +139,31 @@ def put_metadata(osti_creds, pub):
     return response
 
 
-def post_media(osti_creds, pub):
+def post_media(osti_creds, pub, local_file=False):
     req_url = f"{osti_creds['endpoint']}/media/{pub['osti_id']}"
 
-    # Get the PDF file data from url
-    pdf_filename = pub['File URL'].split('/')[-1]
-    pdf_headers = {'user-agent': osti_creds['pdf-user-agent']}
+    if not local_file:
+        # Get the PDF file data from url
+        pdf_filename = pub['File URL'].split('/')[-1]
+        pdf_headers = {'user-agent': osti_creds['pdf-user-agent']}
 
-    pdf_response = requests.get(
-        pub['File URL'], headers=pdf_headers, stream=True)
-    pdf_response.raw.decode_content = True
+        pdf_response = requests.get(
+            pub['File URL'], headers=pdf_headers, stream=True)
+        pdf_response.raw.decode_content = True
 
-    mp_encoder = MultipartEncoder(
-        fields={'file': (pdf_filename, pdf_response.content, 'application/pdf')})
+        mp_encoder = MultipartEncoder(
+            fields={'file': (pdf_filename, pdf_response.content, 'application/pdf')})
+        params = {'title': pub['title']}
+
+    # Load data locally
+    else:
+        pdf_filename = pub['File URL'].split('/')[-1]
+        mp_encoder = MultipartEncoder(
+            fields={'file': (pdf_filename, open(pub['File URL'], "rb"), 'application/pdf')})
+        params = {'title': pub['Title']}
 
     headers = {'Authorization': 'Bearer ' + osti_creds['token'],
                'Content-Type': mp_encoder.content_type}
-    params = {'title': pub['title']}
 
     # Send the post with the PDF data
     media_response = requests.post(
