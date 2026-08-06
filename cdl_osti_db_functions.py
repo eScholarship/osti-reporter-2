@@ -1,24 +1,14 @@
-# pyMySQL - https://pymysql.readthedocs.io/en/latest/
-import pymysql
+from pub_oapi_tools_common import pub_oapi_tools_db
 from time import sleep
 
 
 # Note: mysql_creds are set individually for read and write, So this
 #       connection should be called before each individual mysql_operation.
 def get_cdl_connection(mysql_creds):
-    # connect to the mySql db
-    try:
-        mysql_conn = pymysql.connect(
-            host=mysql_creds['server'],
-            user=mysql_creds['user'],
-            password=mysql_creds['password'],
-            database=mysql_creds['osti-db'],
-            cursorclass=pymysql.cursors.DictCursor)
-
-        return mysql_conn
-    except Exception as e:
-        print("ERROR WHILE CONNECTING TO MYSQL DATABASE.")
-        raise e
+    # TK TK this is sloppy, fix it
+    mysql_creds['database'] = mysql_creds['osti-db']
+    mysql_conn = pub_oapi_tools_db.get_connection(mysql_creds)
+    return mysql_conn
 
 
 # Retrieves the entire eSchol OSTI db
@@ -52,16 +42,29 @@ def insert_new_metadata_submission(pub, mysql_creds):
         pub = convert_nulls_for_sql(pub)
 
         # Build the query
-        insert_query = (f"""INSERT INTO {mysql_creds['osti-table']} 
-            (date_stamp, eschol_ark, osti_id,
-            doi, lbnl_report_no, elements_id,
-            eschol_id, eschol_pr_modified_when) VALUES \n""")
+        insert_query = (f"""INSERT INTO {mysql_creds['osti-table']} (
+            date_stamp,
+            eschol_ark,
+            osti_id,
+            doi,
+            lbnl_report_no,
+            elements_id,
+            eschol_id,
+            eschol_pr_modified_when,
+            pub_date) VALUES \n""")
 
         # Add the values from the pub
-        insert_query += (f"""(CURDATE(), '{pub['ark']}', {pub['osti_id']},
-            '{pub['doi']}', '{pub['LBL Report Number']}', {pub['id']},
-            '{pub['eSchol ID']}', '{pub['eschol_pr_modified_when'].strftime('%Y-%m-%d %H:%M:%S.%f')}');"""
-            ).replace("'Null'", 'Null')
+        insert_query += (f"""(
+            CURDATE(),
+            '{pub['ark']}',
+            {pub['osti_id']},
+            '{pub['doi']}',
+            '{pub['LBL Report Number']}',
+            {pub['id']},
+            '{pub['eSchol ID']}',
+            '{pub['eschol_pr_modified_when'].strftime('%Y-%m-%d %H:%M:%S.%f')}',
+            '{pub['pub_date_for_db'].strftime('%Y-%m-%d')}');"""
+                         ).replace("'Null'", 'Null')
 
         # Open cursor and send query
         cursor.execute(insert_query)
@@ -174,6 +177,36 @@ def update_with_osti_doi(creds, osti_id, osti_doi):
 
     with mysql_conn.cursor() as cursor:
         cursor.execute(query)
+        mysql_conn.commit()
+
+    mysql_conn.close()
+
+
+def update_with_eschol_api(row, mysql_creds):
+    from datetime import datetime
+    update_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+
+    mysql_conn = get_cdl_connection(mysql_creds)
+    with mysql_conn.cursor() as cursor:
+
+        # Success update
+        if row['eschol_api_success']:
+            update_queue_row_query = f"""
+                update {mysql_creds['osti_table']} set
+                eschol_api_updated='{update_time}',
+                eschol_api_response_code={row['eschol_api_response_code']},
+                pub_date_fixed='{update_time}'
+                where osti_id={row['osti_id']};"""
+
+        # Failure update
+        else:
+            update_queue_row_query = f"""
+                update {mysql_creds['osti_table']} set
+                eschol_api_updated='{update_time}',
+                eschol_api_response_code={row['eschol_api_response_code']},
+                where osti_id={row['osti_id']};"""
+
+        cursor.execute(update_queue_row_query)
         mysql_conn.commit()
 
     mysql_conn.close()

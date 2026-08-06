@@ -77,49 +77,47 @@ def process_args():
 
 
 def assign_creds(args):
-    import boto3
 
-    # Get AWS session
-    session = boto3.Session()
-
-    def get_ssm_parameters(folder, names):
-        print("Connect to SSM for parameters")
-        ssm_client = session.client(service_name='ssm', region_name='us-west-2')
-
-        param_names = [f"{folder}/{name}" for name in names]
-        response = ssm_client.get_parameters(Names=param_names, WithDecryption=True)
-
-        param_values = {
-            (param['Name'].split('/')[-1]): param['Value']
-            for param in response['Parameters']}
-
-        return param_values
+    from pub_oapi_tools_common import aws_lambda
 
     # Arg switches
-    input_cnx = "qa" if args.input_qa else "prod"
-    elink_cnx = "qa" if args.elink_qa else "prod"
-    output_cnx = "qa" if args.output_qa else "prod"
+    input_env = "qa" if args.input_qa else "prod"
+    elink_env = "qa" if args.elink_qa else "prod"
+    output_env = "qa" if args.output_qa else "prod"
 
     selected_creds = {}
 
-    # Elements reporting DB for input
-    selected_creds['elements_reporting_db'] = get_ssm_parameters(
-        f"/pub-oapi-tools/elements-reporting-db/{input_cnx}",
-        ['user', 'password', 'server', 'port', 'database', 'driver'])
+    param_req = {
+        # Elements DB for input
+        'elements_reporting_db': {
+            'folder': 'pub-oapi-tools/elements-reporting-db',
+            'env': input_env
+        },
+        # CDL MySQL for input (read)
+        'cdl_db_read': {
+            'folder': 'pub-oapi-tools/tools-rds',
+            'env': input_env,
+            'names': ['user', 'password', 'server', 'port', 'osti-db', 'driver', 'osti-table']
+        },
+        # CDL MySQL for output (write)
+        'cdl_db_write': {
+            'folder': 'pub-oapi-tools/tools-rds',
+            'env': output_env,
+            'names': ['user', 'password', 'server', 'port', 'osti-db', 'driver', 'osti-table']
+        },
+        # OSTI Elink
+        'osti_api': {
+            'folder': 'pub-oapi-tools/elink-api',
+            'env': elink_env,
+            'names': ['endpoint', 'token', 'pdf-user-agent']
+        },
+        # eSchol API
+        'eschol_api': {
+            'folder': 'pub-oapi-tools/eschol-api',
+            'env': output_env,
+            'names': ['endpoint', 'priv-key', 'cookie']
+        }
+    }
 
-    # CDL MySQL for input (read)
-    selected_creds['cdl_db_read'] = get_ssm_parameters(
-        f"/pub-oapi-tools/tools-rds/{input_cnx}",
-        ['user', 'password', 'server', 'port', 'osti-db', 'driver', 'osti-table'])
-
-    # CDL MySQL for output (write)
-    selected_creds['cdl_db_write'] = get_ssm_parameters(
-        f"/pub-oapi-tools/tools-rds/{output_cnx}",
-        ['user', 'password', 'server', 'port', 'osti-db', 'driver', 'osti-table'])
-
-    # OSTI Elink
-    selected_creds['osti_api'] = get_ssm_parameters(
-        f"/pub-oapi-tools/elink-api/{elink_cnx}",
-        ['endpoint', 'token', 'pdf-user-agent'])
-
-    return selected_creds
+    params = aws_lambda.get_parameters(param_req=param_req)
+    return params

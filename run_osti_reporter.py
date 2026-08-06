@@ -5,6 +5,7 @@ import cdl_osti_db_functions as cdl
 import elements_db_functions as elements
 import transform_pubs
 import elink_2_functions as elink_2
+import eschol_api_functions as eschol_api
 
 
 # Global vars
@@ -116,6 +117,14 @@ def process_new_osti_pubs(args, creds, elements_conn, log_folder):
 
     print(f"{meta_ok}/{len(new_osti_pubs)} successful metadata submission in this batch.")
     print(f"{media_ok}/{meta_ok} successful media submissions for new metadata.")
+
+    # Update escholAPI with OSTI IDs
+    new_osti_pubs = eschol_api.update_eschol_api(
+        new_osti_pubs, creds['eschol_api'], creds['cdl_db_write'])
+
+    eschol_api_ok = len([pub for pub in new_osti_pubs
+                         if pub.get('eschol_api_success') is True])
+    print(f"{eschol_api_ok}/{meta_ok} successful eSchol API updates.")
 
     return new_osti_pubs
 

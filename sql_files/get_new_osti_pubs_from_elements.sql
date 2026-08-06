@@ -27,6 +27,7 @@ SELECT DISTINCT
 	FORMAT(p.[Reporting Date 1], 'MM/dd/yyyy') AS [Reporting Date 1],
 	FORMAT(pr.[publication-date], 'MM/dd/yyyy') AS [eschol Pub Date],
 	FORMAT(pr.[online-publication-date], 'MM/dd/yyyy') AS [eschol Online Pub Date],
+	pr.[publication-date] AS [pub_date_for_db],
 	pr.[ID] AS [Pub Record ID],
 	pr.[abstract],
  	pr.[Data Source Proprietary ID] AS [eSchol ID],
@@ -38,11 +39,14 @@ SELECT DISTINCT
 	prf.[Size] AS [File Size],
 
 	-- Build the file URL.
-	-- Note: These PDFs are created during de:wqposit and are live after a few seconds after deposit.
+	-- Note: These PDFs are created during deposit and are live after a few seconds after deposit.
 	-- DOCX files are converted to PDFs, and the eScholarship title page is created and prepended.
 	-- There CAN be errors during the creation process, but it's rare in practice.
-	CONCAT(@eschol_files_url, pr.[Data Source Proprietary ID],
-		'/', pr.[Data Source Proprietary ID], '.pdf') AS [File URL],
+	CONCAT(@eschol_files_url,
+	    pr.[Data Source Proprietary ID],
+		'/',
+		pr.[Data Source Proprietary ID],
+		'.pdf') AS [File URL],
 
 	-- Use a fallback for journals without Canonical Titles (eg. bioarxive)
     CASE WHEN p.[Canonical Journal Title] IS NULL
@@ -50,12 +54,13 @@ SELECT DISTINCT
 	    ELSE p.[Canonical Journal Title]
 	END AS [Journal Name],
 
-	-- If pub. volume/issue are null, use eScholarship volume/issue
+	-- If pub. volume is null, use eScholarship volume
     CASE WHEN p.[volume] IS NULL
 	    THEN pr.[volume]
 	    ELSE p.[volume]
 	END AS [volume],
 
+    -- If pub. issue is null, use eScholarship issue
     CASE WHEN p.[issue] IS NULL
 	    THEN pr.[issue]
 	    ELSE p.[issue]
@@ -129,15 +134,15 @@ SELECT DISTINCT
 	(SELECT
 		'SPONSOR' AS "type",
 		g.[funder name] AS "name"
-	FROM
-		[Grant] g
-			JOIN [Grant Publication Relationship] gpr
-				ON g.id = gpr.[Grant ID]
-	WHERE
-		p.id = gpr.[Publication ID]
-		AND g.[funder name] LIKE '%USDOE%'
+        FROM
+            [Grant] g
+                JOIN [Grant Publication Relationship] gpr
+                    ON g.id = gpr.[Grant ID]
+        WHERE
+            p.id = gpr.[Publication ID]
+            AND g.[funder name] LIKE '%USDOE%'
 
-	FOR JSON AUTO
+        FOR JSON AUTO
 	) AS [grants],
 
 	-- Supplemental Files JSON
@@ -145,13 +150,13 @@ SELECT DISTINCT
 		CONCAT(@eschol_files_url, pr.[Data Source Proprietary ID],
 		    '/supp/', supp_files.[Filename]) AS "url",
 		supp_files.[File Extension] AS "file_extension"
-	FROM
-		[publication record file] supp_files
-	WHERE
-		supp_files.[Publication Record ID] = pr.[ID]
-		AND supp_files.[Proprietary ID] LIKE '%/supp/%'
+        FROM
+            [publication record file] supp_files
+        WHERE
+            supp_files.[Publication Record ID] = pr.[ID]
+            AND supp_files.[Proprietary ID] LIKE '%/supp/%'
 
-	FOR JSON AUTO
+        FOR JSON AUTO
 	) AS [Supplemental Files]
 
 FROM
